@@ -63,12 +63,16 @@ public class TestChange {
         changes.add(new Change("1.1.0", "SELECT * FROM Table"));
         changes.add(new Change("1.0.1", "SELECT * FROM Table"));
         changes.add(new Change("1.1.2", "SELECT * FROM Table"));
+        changes.add(new Change("1.0.7.2", "SELECT * FROM Table"));
         changes.add(new Change("1.0.7", "SELECT * FROM Table"));
+        changes.add(new Change("2", "SELECT * FROM Table"));
         Collections.sort(changes);
         Assert.assertTrue(changes.get(0).getId().equals("1.0.0"));
         Assert.assertTrue(changes.get(1).getId().equals("1.0.1"));
         Assert.assertTrue(changes.get(2).getId().equals("1.0.7"));
-        Assert.assertTrue(changes.get(3).getId().equals("1.1.0"));
-        Assert.assertTrue(changes.get(4).getId().equals("1.1.2"));
+        Assert.assertTrue(changes.get(3).getId().equals("1.0.7.2"));
+        Assert.assertTrue(changes.get(4).getId().equals("1.1.0"));
+        Assert.assertTrue(changes.get(5).getId().equals("1.1.2"));
+        Assert.assertTrue(changes.get(6).getId().equals("2"));
     }
 }

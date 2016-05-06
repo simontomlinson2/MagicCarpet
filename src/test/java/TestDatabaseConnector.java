@@ -68,7 +68,7 @@ public class TestDatabaseConnector {
         Mockito.verify(statement).execute("SELECT * FROM Table3");
     }
 
-    private ResultSet getEmptySet(){
+    public static ResultSet getEmptySet(){
 
         return new ResultSet() {
 

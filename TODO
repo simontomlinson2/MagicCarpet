@@ -1,0 +1,4 @@
+Add the ability to use java classes to do other kinds of updates
+Add the ability to combine both SQL and Java into a single change set
+Add a check for the last input change and then start from the one after that to reduce time to complete
+Be able to specify the schema that the changeset table is created in for when the default isn't wanted

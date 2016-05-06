@@ -1,0 +1,5 @@
+<changeList>
+    <change id="1.0.0">
+        <file>classpath:classpathTest.sql</file>
+    </change>
+</changeList>

@@ -1,4 +1,5 @@
-import org.junit.*;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import uk.co.agware.carpet.MagicCarpet;
@@ -8,6 +9,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 
 /**
  * Created by Philip Ward <Philip.Ward@agware.com> on 2/05/2016.
@@ -48,6 +50,14 @@ public class TestMagicCarpet {
         magicCarpet.parseChanges();
         Assert.assertTrue(magicCarpet.executeChanges());
         Mockito.verify(databaseConnector).executeChanges(Mockito.anyList());
+    }
+
+    @Test
+    public void testClasspathChangeFile() throws FileNotFoundException, SQLException {
+        magicCarpet.parseChanges();
+        Assert.assertEquals(magicCarpet.getChanges().size(), 1);
+        Assert.assertEquals(magicCarpet.getChanges().get(0).getInputList().length, 1);
+        Assert.assertEquals(magicCarpet.getChanges().get(0).getInputList()[0], "SELECT * FROM Classpath");
     }
 
     @Test

@@ -7,6 +7,6 @@
         </script>
     </change>
     <change id="1.0.1">
-        <file>G:\dev\java\magic-carpet\src\main\files\test.sql</file>
+        <file>src\test\java\test.sql</file>
     </change>
 </changeList>

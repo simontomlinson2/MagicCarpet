@@ -20,8 +20,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -122,16 +120,9 @@ public class MagicCarpet {
                 String script = (String) xPath.compile("script").evaluate(change, XPathConstants.STRING);
                 String file = (String) xPath.compile("file").evaluate(change, XPathConstants.STRING);
 
-                String changeText = "";
+                String changeText;
                 if(file != null && !file.equals("")){
-                    Path path = Paths.get(file);
-                    if(Files.exists(path, LinkOption.NOFOLLOW_LINKS)){
-                        byte[] contents = Files.readAllBytes(Paths.get(file));
-                        changeText = new String(contents);
-                    }
-                    else {
-                        LOGGER.error("Unable to find file: {}", file);
-                    }
+                    changeText = new String(getFileContents(file));
                 }
                 else {
                     changeText = script;
@@ -147,6 +138,24 @@ public class MagicCarpet {
         } catch (SAXException | ParserConfigurationException | IOException | XPathExpressionException e) {
             LOGGER.error(e.getMessage(), e);
         }
+    }
+
+    private byte[] getFileContents(String filePath) throws IOException {
+        InputStream in = null;
+        if(filePath.toLowerCase().startsWith("classpath:")){
+            String filename = filePath.replace("classpath:", "");
+            in = getClass().getClassLoader().getResourceAsStream(filename);
+        }
+        else {
+            Path path = Paths.get(filePath);
+            if(path.toFile().exists()){
+                in = new FileInputStream(path.toFile());
+            }
+        }
+        if(in != null){
+            return IOUtils.toByteArray(in);
+        }
+        return new byte[0]; //TODO need to do something about this case
     }
 
     public boolean executeChanges(){
