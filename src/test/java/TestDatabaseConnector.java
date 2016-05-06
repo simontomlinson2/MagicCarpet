@@ -4,6 +4,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import uk.co.agware.carpet.change.Change;
 import uk.co.agware.carpet.database.DatabaseConnector;
+import uk.co.agware.carpet.database.DefaultDatabaseConnector;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -28,7 +29,7 @@ public class TestDatabaseConnector {
 
     @Before
     public void buildMocks() throws SQLException {
-        databaseConnector = new DatabaseConnector();
+        databaseConnector = new DefaultDatabaseConnector();
         connection = Mockito.mock(Connection.class);
         statement = Mockito.mock(Statement.class);
         preparedStatement = Mockito.mock(PreparedStatement.class);

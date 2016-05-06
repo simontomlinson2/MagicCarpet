@@ -4,6 +4,8 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import uk.co.agware.carpet.MagicCarpet;
 import uk.co.agware.carpet.database.DatabaseConnector;
+import uk.co.agware.carpet.database.DefaultDatabaseConnector;
+import uk.co.agware.carpet.exception.MagicCarpetException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -22,30 +24,28 @@ public class TestMagicCarpet {
     @Before
     @SuppressWarnings("unchecked")
     public void buildMocks(){
-        databaseConnector = Mockito.mock(DatabaseConnector.class);
+        databaseConnector = Mockito.mock(DefaultDatabaseConnector.class);
         Mockito.when(databaseConnector.executeChanges(Mockito.anyList())).thenReturn(true);
         magicCarpet = new MagicCarpet(databaseConnector);
     }
 
     @Test
-    public void testSetPath(){
+    public void testSetPath() throws MagicCarpetException {
         magicCarpet.setChangeSetFile(Paths.get("src/test/java/ChangeSet.xml"));
         magicCarpet.parseChanges();
-        Assert.assertFalse(magicCarpet.isError());
         Assert.assertEquals(magicCarpet.getChanges().size(), 2);
     }
 
     @Test
-    public void testSetInputStream() throws FileNotFoundException {
+    public void testSetInputStream() throws FileNotFoundException, MagicCarpetException {
         magicCarpet.setChangeSetFile(new FileInputStream(new File("src/test/java/ChangeSet.xml")));
         magicCarpet.parseChanges();
-        Assert.assertFalse(magicCarpet.isError());
         Assert.assertEquals(magicCarpet.getChanges().size(), 2);
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testExecuteChanges() throws FileNotFoundException {
+    public void testExecuteChanges() throws FileNotFoundException, MagicCarpetException {
         magicCarpet.setChangeSetFile(new FileInputStream(new File("src/test/java/ChangeSet.xml")));
         magicCarpet.parseChanges();
         Assert.assertTrue(magicCarpet.executeChanges());
@@ -53,7 +53,7 @@ public class TestMagicCarpet {
     }
 
     @Test
-    public void testClasspathChangeFile() throws FileNotFoundException, SQLException {
+    public void testClasspathChangeFile() throws FileNotFoundException, SQLException, MagicCarpetException {
         magicCarpet.parseChanges();
         Assert.assertEquals(magicCarpet.getChanges().size(), 1);
         Assert.assertEquals(magicCarpet.getChanges().get(0).getInputList().length, 1);
@@ -62,7 +62,7 @@ public class TestMagicCarpet {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testDevMode() throws FileNotFoundException {
+    public void testDevMode() throws FileNotFoundException, MagicCarpetException {
         magicCarpet.setChangeSetFile(new FileInputStream(new File("src/test/java/ChangeSet.xml")));
         magicCarpet.setDevMode(true);
         magicCarpet.parseChanges();

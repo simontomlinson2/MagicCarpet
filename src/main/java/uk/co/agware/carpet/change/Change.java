@@ -1,5 +1,6 @@
 package uk.co.agware.carpet.change;
 
+import java.util.Arrays;
 import java.util.regex.Pattern;
 
 /**
@@ -63,5 +64,32 @@ public class Change implements Comparable<Change> {
             value += Double.parseDouble(numbers[i]) / Math.pow(10, i);
         }
         return value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Change)) return false;
+
+        Change change = (Change) o;
+
+        return id != null ? id.equals(change.id) : change.id == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "Change{" +
+                "id='" + id + '\'' +
+                ", delimiter='" + delimiter + '\'' +
+                ", inputList=" + Arrays.toString(inputList) +
+                ", error=" + error +
+                ", errorMessage='" + errorMessage + '\'' +
+                '}';
     }
 }

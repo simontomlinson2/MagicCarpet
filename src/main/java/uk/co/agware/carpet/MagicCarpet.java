@@ -9,6 +9,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import uk.co.agware.carpet.change.Change;
 import uk.co.agware.carpet.database.DatabaseConnector;
+import uk.co.agware.carpet.exception.MagicCarpetException;
 import uk.co.agware.carpet.util.FileUtil;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -36,21 +37,15 @@ public class MagicCarpet {
     private List<Change> changes = null;
     private DatabaseConnector databaseConnector;
     private InputStream fileInput;
-    private boolean error;
-    private String errorMessage;
     private boolean devMode;
 
     public MagicCarpet(DatabaseConnector databaseConnector) {
         this.databaseConnector = databaseConnector;
-        this.error = false;
-        this.errorMessage = "";
         this.devMode = false;
     }
 
     public MagicCarpet(DatabaseConnector databaseConnector, boolean devMode) {
         this.databaseConnector = databaseConnector;
-        this.error = false;
-        this.errorMessage = "";
         this.devMode = devMode;
     }
 
@@ -58,21 +53,18 @@ public class MagicCarpet {
         fileInput = inputStream;
     }
 
-    public void setChangeSetFile(Path filePath){
+    public void setChangeSetFile(Path filePath) throws MagicCarpetException {
         if(filePath.toFile().exists()){
             try {
                 fileInput = new FileInputStream(filePath.toString());
             } catch (FileNotFoundException e) {
-                error = true;
-                errorMessage = "File not found";
                 LOGGER.error(e.getMessage(), e);
+                throw new MagicCarpetException("Unable to find file: " +filePath.toString());
             }
         }
         else {
-            // TODO Throw error
-            error = true;
-            errorMessage = "File not found";
             LOGGER.error("File {} does not exist", filePath.toString());
+            throw new MagicCarpetException("Unable to find file: " +filePath.toString());
         }
     }
 
@@ -84,16 +76,7 @@ public class MagicCarpet {
         return changes;
     }
 
-    public boolean isError() {
-        return error;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    // TODO throw errors on issue and don't do anything else
-    public void parseChanges(){
+    public void parseChanges() throws MagicCarpetException {
         if(devMode) return;
 
         if(fileInput == null) {
@@ -101,10 +84,8 @@ public class MagicCarpet {
         }
 
         if(fileInput == null) {
-            error = true;
-            errorMessage = "No ChangeSet.xml found";
             LOGGER.error("No ChangeSet.xml found");
-            return;
+            throw new MagicCarpetException("No ChangeSet.xml found");
         }
 
         changes = new ArrayList<>();
@@ -137,10 +118,11 @@ public class MagicCarpet {
             }
         } catch (SAXException | ParserConfigurationException | IOException | XPathExpressionException e) {
             LOGGER.error(e.getMessage(), e);
+            throw new MagicCarpetException(e);
         }
     }
 
-    private byte[] getFileContents(String filePath) throws IOException {
+    private byte[] getFileContents(String filePath) throws IOException, MagicCarpetException {
         InputStream in = null;
         if(filePath.toLowerCase().startsWith("classpath:")){
             String filename = filePath.replace("classpath:", "");
@@ -155,30 +137,28 @@ public class MagicCarpet {
         if(in != null){
             return IOUtils.toByteArray(in);
         }
-        return new byte[0]; //TODO need to do something about this case
+        else {
+            throw new MagicCarpetException("Unable to find file " +filePath);
+        }
     }
 
-    public boolean executeChanges(){
+    public boolean executeChanges() throws MagicCarpetException {
         if(devMode) return false;
         databaseConnector.checkChangeSetTable();
-        if(!error && changes != null && !changes.isEmpty()) {
+        if(changes != null && !changes.isEmpty()) {
             Collections.sort(changes);
-            boolean success = true;
             for(Change c : changes){
                 if(c.isError()){
                     LOGGER.error(c.getErrorMessage());
-                    success = false;
-                    break;
+                    throw new MagicCarpetException("Error found in change: " +c);
                 }
             }
-            if(success) {
-                return databaseConnector.executeChanges(changes);
-            }
+            return databaseConnector.executeChanges(changes);
         }
         return false;
     }
 
-    public void run(){
+    public void run() throws MagicCarpetException {
         if(devMode) return;
         parseChanges();
         executeChanges();
