@@ -1,3 +1,4 @@
+Throw errors instead of having the error handling I did now, because it's dumb
 Add the ability to use java classes to do other kinds of updates
 Add the ability to combine both SQL and Java into a single change set
 Add a check for the last input change and then start from the one after that to reduce time to complete
