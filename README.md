@@ -51,11 +51,11 @@ public class MagicCarpetContextListener implements ServletContextListener {
                 devMode = Boolean.parseBoolean(devModeString);
             }
             DataSource dataSource = (DataSource) new InitialContext().lookup("java:comp/env/jdbc/" +jdbcName);
-            DatabaseConnector databaseConnector = new DatabaseConnector();
+            DatabaseConnector databaseConnector = new DefaultDatabaseConnector();
             databaseConnector.setConnection(dataSource.getConnection());
             MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, devMode);
             magicCarpet.run();
-        } catch (NamingException | SQLException | IOException e) {
+        } catch (NamingException | SQLException | IOException | MagicCarpetException e) {
             LOGGER.error(e.getMessage(), e);
         }
     }
@@ -74,6 +74,8 @@ Then in web.xml add the following:
     <listener-class>path.to.MagicCarpetContextListener</listener-class>
 </listener>
 ```
+
+You can also do more manual processes if you want to double check that the changes have been loaded up correctly, the ``MagicCarpet.run()`` method runs the ``MagicCarpet.parseChanges();`` and then ``MagicCarpet.executeChanges();`` methods for you, however if you wish you can run ``MagicCarpet.parseChanges();`` and then check the number of changes that have been loaded and if you wish even manually execute a single change or a list of changes using the ``DatabaseConnector.executeChanges(List<Change>)`` or ``DatabaseConnector.executeChange(Change)`` methods. 
 
 ## ChangeSet.xml
 
