@@ -1,0 +1,16 @@
+<changeList>
+    <change version="1.0.0">
+        <task name="Set Up DB">
+            <script>
+                create table test(version integer, test date);
+                alter table test add column another varchar(64);
+                create table second(version varchar(64))
+            </script>
+        </task>
+    </change>
+    <change version="1.0.1">
+        <task name="Alter table" order="1">
+            <file>src\test\files\test.sql</file>
+        </task>
+    </change>
+</changeList>

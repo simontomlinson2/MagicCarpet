@@ -1,5 +1,7 @@
 <changeList>
-    <change id="1.0.0">
-        <file>classpath:classpathTest.sql</file>
+    <change version="1.0.0">
+        <task name="Create DB">
+            <file delimiter=",">classpath:classpathTest.sql</file>
+        </task>
     </change>
 </changeList>

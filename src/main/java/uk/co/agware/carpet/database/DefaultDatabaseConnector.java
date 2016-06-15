@@ -1,63 +1,60 @@
 package uk.co.agware.carpet.database;
 
-import uk.co.agware.carpet.change.Change;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.co.agware.carpet.exception.MagicCarpetException;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
 import java.sql.*;
-import java.util.List;
 
 /**
  * Created by Philip Ward <Philip.Ward@agware.com> on 26/02/2016.
  */
 public class DefaultDatabaseConnector implements DatabaseConnector {
 
-    public static final String TABLE_NAME = "change_set";
-    public static final String CHANGE_COLUMN = "change";
-    public static final String DATE_COLUMN = "applied";
+    private static final String TABLE_NAME = "change_set";
+    private static final String VERSION_COLUMN = "version";
+    private static final String TASK_COLUMN = "task";
+    private static final String DATE_COLUMN = "applied";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultDatabaseConnector.class);
 
     private Connection connection;
 
     @Override
-    public boolean setConnection(String jdbcName){
+    public void setConnection(String jdbcName) {
         try {
             DataSource source = (DataSource) new InitialContext().lookup("java:comp/env/jdbc/" + jdbcName);
             connection = source.getConnection();
             connection.setAutoCommit(false);
-            return true;
         } catch (NamingException | SQLException e) {
             LOGGER.error(e.getMessage(), e);
-            return false;
+            throw new MagicCarpetException(e.getMessage(), e);
         }
     }
 
     @Override
-    public boolean setConnection(String connectionUrl, String name, String password){
+    public void setConnection(String connectionUrl, String name, String password) {
         try {
             connection = DriverManager.getConnection(connectionUrl, name, password);
             connection.setAutoCommit(false);
-            return true;
         } catch (SQLException e) {
             LOGGER.error(e.getMessage(), e);
-            return false;
+            throw new MagicCarpetException(e.getMessage(), e);
         }
     }
 
     @Override
-    public boolean setConnection(Connection connection){
+    public void setConnection(Connection connection) {
         try {
             this.connection = connection;
             this.connection.setAutoCommit(false);
-            return true;
         }
         catch (SQLException e){
             LOGGER.error(e.getMessage(), e);
-            return true;
+            throw new MagicCarpetException(e.getMessage(), e);
         }
     }
 
@@ -94,11 +91,12 @@ public class DefaultDatabaseConnector implements DatabaseConnector {
         }
     }
 
-    private boolean insertChange(String value){
-        String sql = "INSERT INTO " +TABLE_NAME +"(" +CHANGE_COLUMN + "," +DATE_COLUMN +") VALUES(?,?)";
+    public boolean insertChange(String version, String taskName){
+        String sql = String.format("INSERT INTO %s (%s,%s,%s) VALUES (?,?,?)", TABLE_NAME, VERSION_COLUMN, TASK_COLUMN, DATE_COLUMN);
         try (PreparedStatement preparedStatement = connection.prepareStatement(sql)){
-            preparedStatement.setString(1, value);
-            preparedStatement.setDate(2, new Date(System.currentTimeMillis()));
+            preparedStatement.setString(1, version);
+            preparedStatement.setString(2, taskName);
+            preparedStatement.setDate(3, new Date(System.currentTimeMillis()));
             preparedStatement.execute();
             return true;
         } catch (SQLException e) {
@@ -108,30 +106,31 @@ public class DefaultDatabaseConnector implements DatabaseConnector {
     }
 
     @Override
-    public boolean checkChangeSetTable(){
+    public void checkChangeSetTable() {
         try {
             DatabaseMetaData dbm = connection.getMetaData();
             ResultSet tables = dbm.getTables(null, null, TABLE_NAME, null);
             if(!tables.next()){
                 Statement statement = connection.createStatement();
                 String createTableStatement = "CREATE TABLE " +TABLE_NAME + " (" +
-                        CHANGE_COLUMN +" varchar(255), " +
-                        DATE_COLUMN +" date)";
+                        VERSION_COLUMN +" VARCHAR(255), " +
+                        TASK_COLUMN +" VARCHAR(255), " +
+                        DATE_COLUMN +" DATE)";
                 statement.executeUpdate(createTableStatement);
-                return commit();
+                commit();
             }
-            return true;
         } catch (SQLException e) {
             LOGGER.error(e.getMessage(), e);
-            return false;
+            throw new MagicCarpetException(e.getMessage(), e);
         }
     }
 
     @Override
-    public boolean checkChangeExists(String changeNumber){
-        String query = "SELECT * FROM " +TABLE_NAME + " WHERE " +CHANGE_COLUMN + " = ?";
+    public boolean changeExists(String changeVersion, String taskName){
+        String query = String.format("SELECT * FROM %s WHERE %s = ? AND %s = ?", TABLE_NAME, VERSION_COLUMN, TASK_COLUMN);
         try(PreparedStatement statement = connection.prepareStatement(query)) {
-            statement.setString(1, changeNumber);
+            statement.setString(1, changeVersion);
+            statement.setString(2, taskName);
             ResultSet resultSet = statement.executeQuery();
             return resultSet.next();
         } catch (SQLException e) {
@@ -141,46 +140,11 @@ public class DefaultDatabaseConnector implements DatabaseConnector {
     }
 
     @Override
-    public boolean executeChanges(List<Change> changes){
-        boolean allSuccess = true;
-        for(Change c : changes){
-            allSuccess &= executeChange(c);
+    public void rollBack() {
+        try {
+            connection.rollback();
+        } catch (SQLException e) {
+            LOGGER.error(e.getMessage(), e);
         }
-        if(allSuccess){
-            if(commit()){
-                return close();
-            }
-            else {
-                try {
-                    connection.rollback();
-                    LOGGER.error("Failures while applying changes, performing a rollback");
-                } catch (SQLException e) {
-                    LOGGER.error(e.getMessage(), e);
-                }
-            }
-        }
-        else {
-            try {
-                connection.rollback();
-                LOGGER.error("Failures while applying changes, performing a rollback");
-            } catch (SQLException e) {
-                LOGGER.error(e.getMessage(), e);
-            }
-        }
-        return allSuccess;
-    }
-
-    @Override
-    public boolean executeChange(Change change){
-        if(checkChangeExists(change.getId())) return true;
-        LOGGER.info("Executing Update " + change.getId());
-        boolean allSuccess = true;
-        for(String s : change.getInputList()){
-            allSuccess &= executeStatement(s);
-        }
-        if(allSuccess){
-            insertChange(change.getId());
-        }
-        return allSuccess;
     }
 }

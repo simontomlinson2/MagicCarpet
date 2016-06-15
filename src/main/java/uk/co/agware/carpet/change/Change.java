@@ -1,67 +1,44 @@
 package uk.co.agware.carpet.change;
 
-import java.util.Arrays;
-import java.util.regex.Pattern;
+import uk.co.agware.carpet.change.tasks.Task;
+
+import java.util.List;
 
 /**
  * Created by Philip Ward <Philip.Ward@agware.com> on 26/02/2016.
  */
+//TODO Ensure the version String follows the correct format of NUMBER.NUMBER.NUMBER...
+    //TODO Ensure the taskOrder string is either "" or an integer
 public class Change implements Comparable<Change> {
 
-    private String id;
-    private String delimiter;
-    private String[] inputList;
-    private boolean error;
-    private String errorMessage;
+    private String version;
+    private List<Task> tasks;
 
-    public Change(String id, String rawInput) {
-        this.id = id;
-        this.delimiter = ";";
-        this.inputList = rawInput.split(delimiter);
-        for (int i = 0; i < inputList.length; i++) {
-            inputList[i] = inputList[i].trim();
-        }
+    public Change(String version, List<Task> tasks) {
+        this.version = version;
+        this.tasks = tasks;
     }
 
-    public Change(String id, String rawInput, String delimiter) {
-        this.id = id;
-        this.delimiter = delimiter;
-        this.inputList = rawInput.split(Pattern.quote(delimiter));
+    public String getVersion() {
+        return version;
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public String[] getInputList() {
-        return inputList;
-    }
-
-    public boolean isError() {
-        return error;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
+    public List<Task> getTasks() {
+        return tasks;
     }
 
     @Override
     public int compareTo(Change o) {
-        String[] thisVersionSplit = id.split("\\.");
-        String[] oVersionSplit = o.getId().split("\\.");
-        Double thisVersionValue = buildVersionValue(thisVersionSplit);
-        Double oVersionValue = buildVersionValue(oVersionSplit);
-        if(thisVersionValue.equals(oVersionValue)){
-            error = true;
-            errorMessage = "Version number " +id +" detected twice";
-        }
-        return thisVersionValue.compareTo(oVersionValue);
+        double thisVersionValue = buildVersionValue(version);
+        double oVersionValue = buildVersionValue(o.version);
+        return Double.compare(thisVersionValue, oVersionValue);
     }
 
-    private double buildVersionValue(String[] numbers){
+    private double buildVersionValue(String version){
+        String[] versionSplit = version.split("\\.");
         double value = 0.0;
-        for (int i = 0; i < numbers.length; i++) {
-            value += Double.parseDouble(numbers[i]) / Math.pow(10, i);
+        for (int i = 0; i < versionSplit.length; i++) {
+            value += Double.parseDouble(versionSplit[i]) / Math.pow(10, i);
         }
         return value;
     }
@@ -73,23 +50,21 @@ public class Change implements Comparable<Change> {
 
         Change change = (Change) o;
 
-        return id != null ? id.equals(change.id) : change.id == null;
+        return version != null ? version.equals(change.version) : change.version == null;
 
     }
 
     @Override
     public int hashCode() {
-        return id != null ? id.hashCode() : 0;
+        return version != null ? version.hashCode() : 0;
     }
 
     @Override
     public String toString() {
-        return "Change{" +
-                "id='" + id + '\'' +
-                ", delimiter='" + delimiter + '\'' +
-                ", inputList=" + Arrays.toString(inputList) +
-                ", error=" + error +
-                ", errorMessage='" + errorMessage + '\'' +
-                '}';
+        final StringBuilder sb = new StringBuilder("Change{");
+        sb.append("version='").append(version).append('\'');
+        sb.append(", tasks=").append(tasks);
+        sb.append('}');
+        return sb.toString();
     }
 }

@@ -3,7 +3,7 @@ package uk.co.agware.carpet.exception;
 /**
  * Created by Philip Ward <Philip.Ward@agware.com> on 7/05/2016.
  */
-public class MagicCarpetException extends Exception {
+public class MagicCarpetException extends RuntimeException {
 
     public MagicCarpetException() {
     }

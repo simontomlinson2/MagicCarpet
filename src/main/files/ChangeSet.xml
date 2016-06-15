@@ -1,15 +1,29 @@
 <changeList>
-    <change id="1.0.0">
-        <script>
-            create table test(id integer, test date);
-            alter table test add column another varchar(64);
-            create table second(id varchar(64))
-        </script>
+    <change version="1.0.0">
+        <task name="Create Database">
+            <script>
+                create table test(version integer, test date);
+                alter table test add column another varchar(64);
+                create table second(version varchar(64))
+            </script>
+        </task>
     </change>
-    <change id="1.0.1">
-        <file>src\test\java\test.sql</file>
+    <change version="1.0.1">
+        <task name="Fix Bug">
+            <file>src\test\java\test.sql</file>
+        </task>
     </change>
-    <change id="1.1.0">
-        <file>classpath:classpathTest.sql</file>
+    <change version="1.1.0">
+        <task name="Add Feature">
+            <file>classpath:classpathTest.sql</file>
+        </task>
+    </change>
+    <change version="1.2.0">
+        <task name="New Version" order="1">
+
+        </task>
+        <task name="Security Fix" order="2">
+
+        </task>
     </change>
 </changeList>
