@@ -18,6 +18,7 @@ import java.sql.*;
  * Created by Philip Ward <Philip.Ward@agware.com> on 23/04/2016.
  */
 //TODO Need to add some negative tests into these
+    //TODO need to spoof the initial context so I can test the JDBC lookup properly
 public class TestDatabaseConnector {
 
     private DatabaseConnector databaseConnector;
