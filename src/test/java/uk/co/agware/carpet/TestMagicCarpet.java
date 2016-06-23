@@ -56,6 +56,8 @@ public class TestMagicCarpet {
         magicCarpet.setChangeSetFile(new FileInputStream(new File(CHANGE_SET_FILE)));
         magicCarpet.parseChanges();
         Assert.assertTrue(magicCarpet.executeChanges());
+        Mockito.verify(databaseConnector).commit();
+        Mockito.verify(databaseConnector).close();
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         Mockito.verify(databaseConnector, Mockito.times(5)).executeStatement(statements.capture());
         Assert.assertEquals(5, statements.getAllValues().size());

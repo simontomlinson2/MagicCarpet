@@ -150,6 +150,7 @@ public class MagicCarpet {
                 for(Task t : c.getTasks()){
                     if(!databaseConnector.changeExists(c.getVersion(), t.getTaskName())){
                         if(t.performTask()){
+                            LOGGER.info("Applied Version {} Task {}", c.getVersion(), t.getTaskName());
                             databaseConnector.insertChange(c.getVersion(), t.getTaskName());
                         }
                         else {
@@ -160,6 +161,8 @@ public class MagicCarpet {
                     }
                 }
             }
+            databaseConnector.commit();
+            databaseConnector.close();
         }
         return true;
     }
