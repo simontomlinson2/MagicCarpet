@@ -23,7 +23,7 @@ public interface DatabaseConnector {
 
     boolean executeStatement(String sql);
 
-    void checkChangeSetTable() throws MagicCarpetException;
+    void checkChangeSetTable(boolean createTable) throws MagicCarpetException;
 
     boolean changeExists(String version, String taskName);
 

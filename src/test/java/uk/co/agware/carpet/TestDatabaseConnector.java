@@ -9,8 +9,7 @@ import uk.co.agware.carpet.database.DatabaseConnector;
 import uk.co.agware.carpet.database.DefaultDatabaseConnector;
 import uk.co.agware.carpet.exception.MagicCarpetException;
 import uk.co.agware.carpet.stubs.JdbcStub;
-import uk.co.agware.carpet.stubs.NoResultsResultsSetStub;
-import uk.co.agware.carpet.stubs.ResultExistsResultsSet;
+import uk.co.agware.carpet.stubs.ResultsSetStub;
 
 import java.sql.*;
 
@@ -87,8 +86,8 @@ public class TestDatabaseConnector {
     public void testCheckChangeSetTable() throws SQLException {
         DatabaseMetaData metaData = Mockito.mock(DatabaseMetaData.class);
         Mockito.when(connection.getMetaData()).thenReturn(metaData);
-        Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new NoResultsResultsSetStub()); // Returns a results set which returns false for the .next() method
-        databaseConnector.checkChangeSetTable();
+        Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new ResultsSetStub(false)); // Returns a results set which returns false for the .next() method
+        databaseConnector.checkChangeSetTable(createTable);
         Mockito.verify(connection).getMetaData();
         Mockito.verify(metaData).getTables(null, null, "change_set", null);
         ArgumentCaptor<String> updateStatement = ArgumentCaptor.forClass(String.class);
@@ -101,8 +100,8 @@ public class TestDatabaseConnector {
     public void testCheckChangeSetTableAlreadyExists() throws SQLException {
         DatabaseMetaData metaData = Mockito.mock(DatabaseMetaData.class);
         Mockito.when(connection.getMetaData()).thenReturn(metaData);
-        Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new ResultExistsResultsSet());
-        databaseConnector.checkChangeSetTable();
+        Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new ResultsSetStub(true));
+        databaseConnector.checkChangeSetTable(createTable);
         Mockito.verify(connection).getMetaData();
         Mockito.verify(metaData).getTables(null, null, "change_set", null);
         Mockito.verify(statement, Mockito.times(0)).executeUpdate(Mockito.anyString()); // Ensure the create statement wasn't run
@@ -110,7 +109,7 @@ public class TestDatabaseConnector {
 
     @Test
     public void checkChangeDoesntExist() throws SQLException {
-        Mockito.when(preparedStatement.executeQuery()).thenReturn(new NoResultsResultsSetStub());
+        Mockito.when(preparedStatement.executeQuery()).thenReturn(new ResultsSetStub(false));
         Assert.assertFalse(databaseConnector.changeExists("1.0.0", "Create DB"));
         String expectedSql = "SELECT * FROM change_set WHERE version = ? AND task = ?";
         Mockito.verify(connection).prepareStatement(expectedSql);
@@ -120,7 +119,7 @@ public class TestDatabaseConnector {
 
     @Test
     public void checkChangeExists() throws SQLException {
-        Mockito.when(preparedStatement.executeQuery()).thenReturn(new ResultExistsResultsSet());
+        Mockito.when(preparedStatement.executeQuery()).thenReturn(new ResultsSetStub(true));
         Assert.assertTrue(databaseConnector.changeExists("1.0.0", "Create DB"));
     }
 

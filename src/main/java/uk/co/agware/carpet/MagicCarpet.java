@@ -41,6 +41,7 @@ public class MagicCarpet {
     private DatabaseConnector databaseConnector;
     private InputStream fileInput;
     private boolean devMode;
+    private boolean createTable = true;
     private XPath xPath;
 
     public MagicCarpet(DatabaseConnector databaseConnector) {
@@ -51,6 +52,10 @@ public class MagicCarpet {
     public MagicCarpet(DatabaseConnector databaseConnector, boolean devMode) {
         this.databaseConnector = databaseConnector;
         this.devMode = devMode;
+    }
+
+    public void setCreateTable(boolean createTable) {
+        this.createTable = createTable;
     }
 
     public void setChangeSetFile(InputStream inputStream){
@@ -142,15 +147,15 @@ public class MagicCarpet {
             LOGGER.info("MagicCarpet set to Dev Mode, changes not being implemented");
             return false;
         }
-        databaseConnector.checkChangeSetTable();
+        databaseConnector.checkChangeSetTable(createTable);
         if(changes != null && !changes.isEmpty()) {
             Collections.sort(changes);
             for(Change c : changes){
                 Collections.sort(c.getTasks());
                 for(Task t : c.getTasks()){
                     if(!databaseConnector.changeExists(c.getVersion(), t.getTaskName())){
+                        LOGGER.info("Applying Version {} Task {}", c.getVersion(), t.getTaskName());
                         if(t.performTask()){
-                            LOGGER.info("Applied Version {} Task {}", c.getVersion(), t.getTaskName());
                             databaseConnector.insertChange(c.getVersion(), t.getTaskName());
                         }
                         else {

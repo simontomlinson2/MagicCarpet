@@ -14,6 +14,8 @@ import java.sql.*;
  */
 public class DefaultDatabaseConnector implements DatabaseConnector {
 
+    private final Logger logger = LoggerFactory.getLogger(DefaultDatabaseConnector.class);
+
     private static final String TABLE_NAME = "change_set";
     private static final String VERSION_COLUMN = "version";
     private static final String TASK_COLUMN = "task";
@@ -83,6 +85,7 @@ public class DefaultDatabaseConnector implements DatabaseConnector {
     @Override
     public boolean executeStatement(String sql){
         try(Statement statement = connection.createStatement()) {
+            logger.info("Executing statement: {}", sql);
             statement.execute(sql);
             return true;
         } catch (SQLException e) {
@@ -106,11 +109,11 @@ public class DefaultDatabaseConnector implements DatabaseConnector {
     }
 
     @Override
-    public void checkChangeSetTable() {
+    public void checkChangeSetTable(boolean createTable) {
         try {
             DatabaseMetaData dbm = connection.getMetaData();
             ResultSet tables = dbm.getTables(null, null, TABLE_NAME, null);
-            if(!tables.next()){
+            if(!tables.next() && createTable){
                 Statement statement = connection.createStatement();
                 String createTableStatement = "CREATE TABLE " +TABLE_NAME + " (" +
                         VERSION_COLUMN +" VARCHAR(255), " +

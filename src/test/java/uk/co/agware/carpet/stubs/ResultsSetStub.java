@@ -11,11 +11,17 @@ import java.util.Map;
 /**
  * Created by Philip Ward <Philip.Ward@agware.com> on 15/06/2016.
  */
-public class ResultExistsResultsSet implements ResultSet {
+public class ResultsSetStub implements ResultSet {
+
+    private boolean hasNext;
+
+    public ResultsSetStub(boolean hasNext) {
+        this.hasNext = hasNext;
+    }
 
     @Override
     public boolean next() throws SQLException {
-        return true;
+        return hasNext;
     }
 
     @Override
