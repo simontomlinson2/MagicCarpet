@@ -35,7 +35,7 @@ import java.util.List;
  */
 public class MagicCarpet {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(MagicCarpet.class);
+    private final Logger logger = LoggerFactory.getLogger(MagicCarpet.class);
 
     private List<Change> changes = null;
     private DatabaseConnector databaseConnector;
@@ -67,12 +67,12 @@ public class MagicCarpet {
             try {
                 fileInput = new FileInputStream(filePath.toString());
             } catch (FileNotFoundException e) {
-                LOGGER.error(e.getMessage(), e);
+                logger.error(e.getMessage(), e);
                 throw new MagicCarpetException("Unable to find file: " +filePath.toString());
             }
         }
         else {
-            LOGGER.error("File {} does not exist", filePath.toString());
+            logger.error("File {} does not exist", filePath.toString());
             throw new MagicCarpetException("Unable to find file: " +filePath.toString());
         }
     }
@@ -93,7 +93,7 @@ public class MagicCarpet {
         }
 
         if(fileInput == null) {
-            LOGGER.error("No ChangeSet.xml found");
+            logger.error("No ChangeSet.xml found");
             throw new MagicCarpetException("No ChangeSet.xml found");
         }
 
@@ -111,7 +111,7 @@ public class MagicCarpet {
                 changes.add(new Change(version, tasks));
             }
         } catch (SAXException | ParserConfigurationException | IOException | XPathExpressionException e) {
-            LOGGER.error(e.getMessage(), e);
+            logger.error(e.getMessage(), e);
             throw new MagicCarpetException(e);
         }
     }
@@ -136,7 +136,7 @@ public class MagicCarpet {
                 }
             }
         } catch (XPathExpressionException e) {
-            LOGGER.error(e.getMessage(), e);
+            logger.error(e.getMessage(), e);
             throw new MagicCarpetException(e.getMessage(), e);
         }
         return tasks;
@@ -144,7 +144,7 @@ public class MagicCarpet {
 
     public boolean executeChanges() throws MagicCarpetException {
         if(devMode) {
-            LOGGER.info("MagicCarpet set to Dev Mode, changes not being implemented");
+            logger.info("MagicCarpet set to Dev Mode, changes not being implemented");
             return false;
         }
         databaseConnector.checkChangeSetTable(createTable);
@@ -154,7 +154,7 @@ public class MagicCarpet {
                 Collections.sort(c.getTasks());
                 for(Task t : c.getTasks()){
                     if(!databaseConnector.changeExists(c.getVersion(), t.getTaskName())){
-                        LOGGER.info("Applying Version {} Task {}", c.getVersion(), t.getTaskName());
+                        logger.info("Applying Version {} Task {}", c.getVersion(), t.getTaskName());
                         if(t.performTask()){
                             databaseConnector.insertChange(c.getVersion(), t.getTaskName());
                         }
@@ -166,6 +166,7 @@ public class MagicCarpet {
                     }
                 }
             }
+            logger.info("Database updates complete");
             databaseConnector.commit();
             databaseConnector.close();
         }
@@ -174,7 +175,7 @@ public class MagicCarpet {
 
     public void run() throws MagicCarpetException {
         if(devMode) {
-            LOGGER.info("MagicCarpet set to Dev Mode, changes not being implemented");
+            logger.info("MagicCarpet set to Dev Mode, changes not being implemented");
             return;
         }
         parseChanges();
