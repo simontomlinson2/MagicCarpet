@@ -87,7 +87,7 @@ public class TestDatabaseConnector {
         DatabaseMetaData metaData = Mockito.mock(DatabaseMetaData.class);
         Mockito.when(connection.getMetaData()).thenReturn(metaData);
         Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new ResultsSetStub(false)); // Returns a results set which returns false for the .next() method
-        databaseConnector.checkChangeSetTable(createTable);
+        databaseConnector.checkChangeSetTable(true);
         Mockito.verify(connection).getMetaData();
         Mockito.verify(metaData).getTables(null, null, "change_set", null);
         ArgumentCaptor<String> updateStatement = ArgumentCaptor.forClass(String.class);
@@ -101,7 +101,7 @@ public class TestDatabaseConnector {
         DatabaseMetaData metaData = Mockito.mock(DatabaseMetaData.class);
         Mockito.when(connection.getMetaData()).thenReturn(metaData);
         Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new ResultsSetStub(true));
-        databaseConnector.checkChangeSetTable(createTable);
+        databaseConnector.checkChangeSetTable(true);
         Mockito.verify(connection).getMetaData();
         Mockito.verify(metaData).getTables(null, null, "change_set", null);
         Mockito.verify(statement, Mockito.times(0)).executeUpdate(Mockito.anyString()); // Ensure the create statement wasn't run
