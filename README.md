@@ -4,17 +4,13 @@ The Magic Carpet is a fun game played in a field with a group of guys who aren't
 
 ## Purpose
 
-This library is intended as a auto updating tool for the application environment which will be triggered when the application is started, though the details of how it is triggered are left as an exercise for the developer, though suggestions will be given within the README.
+This library is intended as an auto updating tool for the application database which will be triggered when the application is started, there are any number of ways to configure how it is run, however there is one example shown below.
 
 ## Configuration
 
-An XML document is used to define the updates that will be run, at the present moment it is only used for performing changes to a database such as adding or updating tables and columns. Each change set needs to be given a change ID which is a numerical value and will allow for versioning of the form <Major>.<Minor>.<Patch>... and will work for any number of given revision numbers, where the first number is classed as the most significant value reducing in significance as it moves to the right.
+The application is configured with an XML Document (Example Below) which describes a version number, and that version then haa a set of tasks inside it for performing the actual updates. This allows for incremental database updates while doing development work, rather than having to apply them manually until release time. The execution order of the tasks can be defined with an attribute, otherwise the tasks are run in the order they appear after the document has been parsed, therefore it is a good idea to add explicit ordering if it is needed.
 
-Each change ID needs to be unique, they do not need to be sequential, however they will be ordered depending on the value given.
-
-If two changes are found with the same ID, then the application will give an error and will not perform any updates from the list it is given.
-
-The application also has a devMode flag, this was put in as an easy way to disable the function for when you don't want it to make any changes, such as while you are still working on a change and so do not want it to apply half the changes you have created and then never do any more when it is run again. This value can be passed in to the setup of the objects and so can be obtained from a properties file or something similar.
+When creating the MagicCarpet instance, you can also pass in an optional boolean to disable it running even if some other code executes its run method at some later time.
 
 ## Database Access
 
@@ -24,56 +20,21 @@ The database connection used will need to have write access to the database give
 
 Using this library is at your own risk, we are not responsible for any loss of data or database corruption caused by using this code for your own projects, remember to carefully test all changes before deploying the application anywhere but dev environments and always back up your database.
 
-One way to set this up within a web application is to create a custom ServletContextListener implementation and then register that in the web.xml ahead of any spring listeners you might have:
+The example below uses Spring to show one way to use the application, there are other and maybe better ways to do it:
 
+Create a MagicCarpet Bean, the "devMode" flag is optional here, this also calls the .run() method within the Bean creation before returning the Bean, this will run all the updates first
 ```
-public class MagicCarpetContextListener implements ServletContextListener {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MagicCarpetContextListener.class);
-
-    @Override
-    public void contextInitialized(ServletContextEvent servletContextEvent) {
-        try {
-            InputStream in = getClass().getClassLoader().getResourceAsStream("farmhand.properties");
-            Properties properties = new Properties();
-            properties.load(in);
-            String jdbcName = properties.getProperty("uk.co.agware.datasource.name");
-            if(jdbcName == null || "".equals(jdbcName)){
-                LOGGER.error("Unable to find property uk.co.agware.datasource.name");
-                return;
-            }
-            String devModeString = properties.getProperty("uk.co.agware.devMode");
-            boolean devMode = true;
-            if(devModeString == null || "".equals(devModeString)){
-                LOGGER.warn("Unable to find devMode property, setting to true for safety");
-            }
-            else {
-                devMode = Boolean.parseBoolean(devModeString);
-            }
-            DataSource dataSource = (DataSource) new InitialContext().lookup("java:comp/env/jdbc/" +jdbcName);
-            DatabaseConnector databaseConnector = new DefaultDatabaseConnector();
-            databaseConnector.setConnection(dataSource.getConnection());
-            MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, devMode);
-            magicCarpet.run();
-        } catch (NamingException | SQLException | IOException | MagicCarpetException e) {
-            LOGGER.error(e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public void contextDestroyed(ServletContextEvent servletContextEvent) {
-
-    }
+@Bean(name = "magic-carpet")
+public MagicCarpet magicCarpet() throws SQLException {
+    DatabaseConnector databaseConnector = new DefaultDatabaseConnector();
+    databaseConnector.setConnection(portalDataSource().getConnection());
+    MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, devMode);
+    magicCarpet.run();
+    return magicCarpet;
 }
 ```
 
-Then in web.xml add the following:
-
-```
-<listener>
-    <listener-class>path.to.MagicCarpetContextListener</listener-class>
-</listener>
-```
+In your configuration files, make sure that any Database Access class Beans, such as an EntityManager for JPA or JDBCTemplate for Spring JDBC are annotated with ``@DependsOn("magic-carpet")``, this will ensure that they are created after the Magic Carpet Bean has completed and therefore nothing else should be attempting to access the Database before the updates have been completed.
 
 You can also do more manual processes if you want to double check that the changes have been loaded up correctly, the ``MagicCarpet.run()`` method runs the ``MagicCarpet.parseChanges();`` and then ``MagicCarpet.executeChanges();`` methods for you, however if you wish you can run ``MagicCarpet.parseChanges();`` and then check the number of changes that have been loaded and if you wish even manually execute a single change or a list of changes using the ``DatabaseConnector.executeChanges(List<Change>)`` or ``DatabaseConnector.executeChange(Change)`` methods. 
 
@@ -95,21 +56,35 @@ Inside the ChangeSet.xml is where the definitions for all the changes you want t
 ```
 <changeList>
     <change id="1.0.0" delimiter=";">
-        <script>
-            create table test(id integer, test date);
-            alter table test add column another varchar(64);
-            create table second(id varchar(64))
-        </script>
+        <task name="Create DB">
+            <script>
+                create table test(id integer, test date);
+                alter table test add column another varchar(64);
+                create table second(id varchar(64))
+            </script>
+        </task>
     </change>
     <change id="1.0.1">
-        <file>src\test\java\test.sql</file>
+        <task name="Fix Bug">
+            <file>classpath:changes/1.0.1.sql</file>
+        </task>
     </change>
     <change id="1.1.0">
-        <file>classpath:classpathTest.sql</file>
+        <task name="Add New Table" order="1">
+            <file>classpath:addNewTable.sql</file>
+        </task
+        <task name="Alter Table" order="2">
+            <file>classpath:alterTable.sql</file>
+        </task
     </change>
 </changeList>
 ```
-Each change configuration has an ID and either a script or the name of a file that holds the SQL to execute. File paths are either the full path, relative or absolute, to the file you wish to use, or are prefixed by "classpath:" which tells the library to look for the file in the classpath.
+Each "change" can contain any number of tasks to be executed, there are a number of rules that determine the execution order and validity of a task, they are the following:
+
+* Each change element is executed in ascending order of "id", that means that 1.0.0 is before 1.0.1, which is before 1.1.0. The application is expecting versions of the form integer.integer.integer
+* Each change element needs to have a unique ID
+* Each Task within a change needs to have a unique name for that change. Repeat names are allowed between changes, but not within them.
+* Tasks are executed in the order they appear unless otherwise stated. If some tasks contain an order and some do not then the ones with an order are executed first in the order they resolve to.
 
 ##### Delimiter
-The files can also have a custom delimiter for when there are multiple statements to execute. By default the delimiter is set to semi colon, however if you wish to make it something else then you can specify it there.
+Each task can have a custom delimiter for when there are multiple statements to execute. By default the delimiter is set to semi colon.
