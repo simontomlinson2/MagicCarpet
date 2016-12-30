@@ -17,21 +17,20 @@ import javax.xml.transform.stream.StreamResult
 class FileUtil {
 
     fun  byteArrayToDocument(source: ByteArray): Document {
-        var factory = DocumentBuilderFactory.newInstance()
-        var builder = factory.newDocumentBuilder()
+        val factory = DocumentBuilderFactory.newInstance()
+        val builder = factory.newDocumentBuilder()
         return builder.parse(InputSource(StringReader(String(source, Charset.forName("UTF8")))))
     }
 
     fun documentToString(doc: Document): String {
         try {
-            var sw = StringWriter()
-            var tf = TransformerFactory.newInstance()
-            var transformer = tf.newTransformer()
+            val sw = StringWriter()
+            val tf = TransformerFactory.newInstance()
+            val transformer = tf.newTransformer()
             transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes")
             transformer.setOutputProperty(OutputKeys.METHOD, "xml")
             transformer.setOutputProperty(OutputKeys.INDENT, "yes")
             transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8")
-
             transformer.transform(DOMSource(doc), StreamResult(sw))
             return sw.toString()
         } catch (ex: Exception) {

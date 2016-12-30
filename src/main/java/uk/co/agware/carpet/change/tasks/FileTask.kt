@@ -14,28 +14,24 @@ import java.nio.file.Paths
 /**
  * Created by Simon on 29/12/2016.
  */
-class FileTask(databaseConnector: DatabaseConnector, taskName: String, taskOrder: Int, filePath: String, delimiter: String?) : Task {
+class FileTask(val databaseConnector: DatabaseConnector, override var taskName: String, override var taskOrder: Int, val filePath: String, delimiter: String?) : Task {
 
-    var databaseConnector = databaseConnector
-    override var taskName = taskName
-    override var taskOrder = taskOrder
-
+    private val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
     val delimiter: String
     init {
         this.delimiter = if (delimiter == null || "" == delimiter) ";" else delimiter
     }
-    val filePath = filePath
 
     @Override
     override fun performTask(): Boolean {
         try {
             val contents: String = String(getFileContents())
-            val statements: List<String> = contents.split(delimiter.orEmpty())
-            statements.forEach { s -> if(!databaseConnector.executeStatement(s.trim())) return false }
+            val statements: List<String> = contents.split(this.delimiter.orEmpty())
+            statements.forEach { s -> if(!this.databaseConnector.executeStatement(s.trim())) return false }
         } catch (e: Exception) {
             when(e){
                 is MagicCarpetException , is IOException -> {
-                    LOGGER.error(e.message, e)
+                    this.LOGGER.error(e.message, e)
                 }
                 else -> throw e
             }
@@ -46,24 +42,19 @@ class FileTask(databaseConnector: DatabaseConnector, taskName: String, taskOrder
     }
 
     fun getFileContents(): ByteArray {
-        if(filePath.toLowerCase().startsWith("classpath:")){
-            val filename: String = filePath.replace("classpath:", "")
+        if(this.filePath.toLowerCase().startsWith("classpath:")){
+            val filename: String = this.filePath.replace("classpath:", "")
             var input : InputStream = javaClass.getClassLoader().getResourceAsStream(filename)
             if(input != null) {
                 return IOUtils.toByteArray(input)
             }
         }
         else {
-            var path: Path = Paths.get(filePath)
+            var path: Path = Paths.get(this.filePath)
             if(Files.exists(path)){
                 return Files.readAllBytes(path)
             }
         }
-        throw MagicCarpetException("Unable to find file " +filePath)
+        throw MagicCarpetException("Unable to find file " +this.filePath)
     }
-    companion object {
-        private val LOGGER: Logger = LoggerFactory.getLogger(FileTask.javaClass)
-    }
-
-
 }

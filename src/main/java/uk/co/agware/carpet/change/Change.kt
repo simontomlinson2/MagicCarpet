@@ -9,14 +9,11 @@ import uk.co.agware.carpet.change.tasks.Task
 //TODO Ensure the version String follows the correct format of NUMBER.NUMBER.NUMBER...
 //TODO Ensure the taskOrder string is either "" or an integer
 
-class Change(version: String, tasks: List<Task>?) : Comparable<Change> {
-
-    val version = version
-    val tasks = tasks
+class Change(val version: String, val tasks: List<Task>?) : Comparable<Change> {
 
     @Override
     override fun compareTo(o: Change): Int {
-        val thisVersionValue = buildVersionValue(version)
+        val thisVersionValue = buildVersionValue(this.version)
         val oVersionValue = buildVersionValue(o.version)
         return thisVersionValue.compareTo(oVersionValue)
     }
@@ -34,20 +31,19 @@ class Change(version: String, tasks: List<Task>?) : Comparable<Change> {
 
         val change: Change = o
 
-        return if(version != null) version == change.version else false
-
+        return if(this.version != null) this.version == change.version else false
     }
 
     @Override
     override fun hashCode(): Int {
-        return if(version != null) version.hashCode() else 0;
+        return if(this.version != null) this.version.hashCode() else 0;
     }
 
     @Override
     override fun toString(): String {
         val  sb = StringBuilder("Change{")
-        sb.append("version='").append(version).append('\'')
-        sb.append(", tasks=").append(tasks)
+        sb.append("version='").append(this.version).append('\'')
+        sb.append(", tasks=").append(this.tasks)
         sb.append('}')
         return sb.toString()
     }

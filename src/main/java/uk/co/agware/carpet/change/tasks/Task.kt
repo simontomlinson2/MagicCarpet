@@ -10,6 +10,6 @@ interface Task : Comparable<Task> {
 
     @Override
     override fun compareTo(o: Task): Int {
-        return taskOrder.compareTo(o.taskOrder)
+        return this.taskOrder.compareTo(o.taskOrder)
     }
 }
