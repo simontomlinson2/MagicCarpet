@@ -10,11 +10,11 @@ import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-
+import com.fasterxml.jackson.annotation.JsonIgnore
 /**
  * Created by Simon on 29/12/2016.
  */
-class FileTask(val databaseConnector: DatabaseConnector, override var taskName: String, override var taskOrder: Int, val filePath: String, delimiter: String?) : Task {
+class FileTask(@JsonIgnore override var databaseConnector: DatabaseConnector?, override var taskName: String, override var taskOrder: Int, val filePath: String, delimiter: String?) : Task {
 
     private val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
     val delimiter: String
@@ -27,7 +27,7 @@ class FileTask(val databaseConnector: DatabaseConnector, override var taskName: 
         try {
             val contents: String = String(getFileContents())
             val statements: List<String> = contents.split(this.delimiter.orEmpty())
-            statements.forEach { s -> if(!this.databaseConnector.executeStatement(s.trim())) return false }
+            statements.forEach { s -> if(!this.databaseConnector!!.executeStatement(s.trim())) return false }
         } catch (e: Exception) {
             when(e){
                 is MagicCarpetException , is IOException -> {

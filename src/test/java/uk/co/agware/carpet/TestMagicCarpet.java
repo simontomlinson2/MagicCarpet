@@ -11,8 +11,6 @@ import uk.co.agware.carpet.exception.MagicCarpetException;
 import uk.co.agware.carpet.stubs.ResultsSetStub;
 import uk.co.agware.carpet.util.FileUtil;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.nio.file.Paths;
 import java.sql.Connection;
@@ -25,6 +23,9 @@ import java.sql.SQLException;
 public class TestMagicCarpet {
 
     private static final String CHANGE_SET_FILE = "src/test/files/ChangeSet.xml";
+    private static final String CHANGE_SET_JSON = "src/test/files/ChangeSet.json";
+    private static final String CHANGE_SET_DIRECTORY = "src/test/files/";
+    private static final String CHANGE_SET_DIRECTORY_NESTED = "src/test/files/nest/";
 
     private DatabaseConnector databaseConnector;
     private MagicCarpet magicCarpet;
@@ -45,27 +46,58 @@ public class TestMagicCarpet {
     }
 
     @Test
+    public void testDirectoryPath() throws MagicCarpetException {
+        magicCarpet.setPath(Paths.get(CHANGE_SET_DIRECTORY));
+        magicCarpet.parseChanges();
+        Assert.assertEquals(2, magicCarpet.getChanges().size());
+    }
+    @Test
+    public void testDirectoryPathNested() throws MagicCarpetException {
+        magicCarpet.setPath(Paths.get(CHANGE_SET_DIRECTORY_NESTED));
+        magicCarpet.parseChanges();
+        Assert.assertEquals(3, magicCarpet.getChanges().size());
+        Assert.assertTrue(magicCarpet.executeChanges());
+        Mockito.verify(databaseConnector).commit();
+        Mockito.verify(databaseConnector).close();
+        ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
+        Mockito.verify(databaseConnector, Mockito.times(6)).executeStatement(statements.capture());
+        Assert.assertEquals(6, statements.getAllValues().size());
+        Assert.assertTrue(statements.getAllValues().contains("create table test(version integer, test date)"));
+        Assert.assertTrue(statements.getAllValues().contains("alter table test add column another varchar(64)"));
+        Assert.assertTrue(statements.getAllValues().contains("create table second(version varchar(64))"));
+        Assert.assertTrue(statements.getAllValues().contains("create table third(version varchar(64))"));
+        Assert.assertTrue(statements.getAllValues().contains("SELECT * FROM Table"));
+        Assert.assertTrue(statements.getAllValues().contains("SELECT * FROM Other_Table"));
+    }
+
+    @Test
     public void testSetPath() throws MagicCarpetException {
-        magicCarpet.setChangeSetFile(Paths.get(CHANGE_SET_FILE));
+        magicCarpet.setPath(Paths.get(CHANGE_SET_FILE));
+        magicCarpet.parseChanges();
+        Assert.assertEquals(2, magicCarpet.getChanges().size());
+    }
+    @Test
+    public void testSetPathJson() throws MagicCarpetException {
+        magicCarpet.setPath(Paths.get(CHANGE_SET_JSON));
         magicCarpet.parseChanges();
         Assert.assertEquals(2, magicCarpet.getChanges().size());
     }
 
     @Test(expected = MagicCarpetException.class)
     public void testSetPathDoesntExist() throws MagicCarpetException {
-        magicCarpet.setChangeSetFile(Paths.get("this/file/doesnt/exist"));
+        magicCarpet.setPath(Paths.get("this/file/doesnt/exist"));
     }
 
     @Test
     public void testSetInputStream() throws FileNotFoundException, MagicCarpetException {
-        magicCarpet.setChangeSetFile(new FileInputStream(new File(CHANGE_SET_FILE)));
+        magicCarpet.setPath(Paths.get(CHANGE_SET_FILE));
         magicCarpet.parseChanges();
         Assert.assertEquals(2, magicCarpet.getChanges().size());
     }
 
     @Test
     public void testExecuteChanges() throws FileNotFoundException, MagicCarpetException {
-        magicCarpet.setChangeSetFile(new FileInputStream(new File(CHANGE_SET_FILE)));
+        magicCarpet.setPath(Paths.get(CHANGE_SET_FILE));
         magicCarpet.parseChanges();
         Assert.assertTrue(magicCarpet.executeChanges());
         Mockito.verify(databaseConnector).commit();
@@ -118,7 +150,7 @@ public class TestMagicCarpet {
 
     @Test
     public void testDevMode() throws FileNotFoundException, MagicCarpetException {
-        magicCarpet.setChangeSetFile(new FileInputStream(new File(CHANGE_SET_FILE)));
+        magicCarpet.setPath(Paths.get(CHANGE_SET_FILE));
         magicCarpet.setDevMode(true);
         magicCarpet.run();
         Assert.assertFalse(magicCarpet.executeChanges());

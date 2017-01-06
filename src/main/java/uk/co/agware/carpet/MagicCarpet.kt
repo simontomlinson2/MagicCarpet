@@ -1,5 +1,8 @@
 package uk.co.agware.carpet
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.apache.commons.io.IOUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -18,6 +21,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.*
 import javax.xml.parsers.ParserConfigurationException
 import javax.xml.xpath.XPath
@@ -31,8 +35,9 @@ import javax.xml.xpath.XPathFactory
 class MagicCarpet(val databaseConnector: DatabaseConnector, val fileUtil: FileUtil)   {
 
     private val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
-    val changes = mutableListOf<Change>()
-    var inputStream: InputStream = javaClass.getClassLoader().getResourceAsStream("ChangeSet.xml")
+    var changes = mutableListOf<Change>()
+    var path: Path = Paths.get(javaClass.getClassLoader().getResource("ChangeSet.xml").toURI())
+        set (value){ if(Files.notExists(value)) throw MagicCarpetException("Unable to find file: ".plus(path.toString())) else field = value }
     var devMode = false
     val createTable = true
     val xPath: XPath = XPathFactory.newInstance().newXPath()
@@ -40,37 +45,66 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val fileUtil: FileUt
     constructor (databaseConnector: DatabaseConnector, fileUtil: FileUtil, devMode: Boolean): this(databaseConnector, fileUtil) {
         this.devMode = devMode
     }
-
-    fun setChangeSetFile(fileStream: FileInputStream){
-        this.inputStream = fileStream
-    }
-
-    fun setChangeSetFile(filePath: Path){
-        if(Files.exists(filePath)){
-            try {
-                this.inputStream = FileInputStream(filePath.toString())
-            } catch (e: FileNotFoundException) {
-                this.LOGGER.error(e.message, e)
-                throw MagicCarpetException("Unable to find file: ".plus(filePath.toString()))
-            }
-        }
-        else {
-            this.LOGGER.error("File {} does not exist", filePath.toString())
-            throw MagicCarpetException("Unable to find file: ".plus(filePath.toString()))
-        }
+    constructor (databaseConnector: DatabaseConnector, fileUtil: FileUtil, path: Path): this(databaseConnector, fileUtil) {
+        this.path = path
     }
 
     fun parseChanges() {
+
         if(this.devMode) return
 
-        if(this.inputStream == null) {
-            this.LOGGER.error("No ChangeSet.xml found")
+        if(this.path == null || Files.notExists(this.path)) {
+            this.LOGGER.error("No ChangeSet found")
             throw MagicCarpetException("No ChangeSet.xml found")
+            return
         }
 
+        if(Files.isDirectory(this.path)){
+            if (Files.exists(Paths.get(this.path.toString(),"ChangeSet.xml"))){
+                buildChanges(Paths.get(this.path.toString(),"ChangeSet.xml"))
+            }
+            else if (Files.exists(Paths.get(this.path.toString(),"ChangeSet.json"))){
+                buildChanges(Paths.get(this.path.toString(),"ChangeSet.json"))
+            }
+            else{
+                var paths =  Files.walk(this.path)
+                paths.forEach {
+                    p ->
+                    if(p != this.path){
+                        if (Files.exists(Paths.get(p.toString(),"ChangeSet.xml"))){
+                            buildChanges(Paths.get(p.toString(),"ChangeSet.xml"))
+                        }
+                        else if (Files.exists(Paths.get(p.toString(),"ChangeSet.json"))){
+                            buildChanges(Paths.get(p.toString(),"ChangeSet.json"))
+                        }
+                        else if (Files.isDirectory(p)){
+                            val tasks = mutableListOf<Task>()
+                            var index = 0
+                            Files.walk(p)
+                                    .sorted()
+                                    .forEach {
+                                        f ->
+                                        if(f != p)
+                                            tasks.add(FileTask(this.databaseConnector, f.fileName.toString().split(Regex("-|\\."))[1], index++, f.toString(), null))
+                                    }
+                            this.changes.add(Change(p.fileName.toString(),tasks))
+                        }
+                    }
+                }
+            }
+        }
+        else{
+            buildChanges(this.path)
+        }
+
+    }
+
+
+
+    fun buildXML(inputStream: InputStream){
         try {
-            var changeSetDoc = this.fileUtil.byteArrayToDocument(IOUtils.toByteArray(this.inputStream))
-            this.inputStream.close()
+            var changeSetDoc = this.fileUtil.byteArrayToDocument(IOUtils.toByteArray(inputStream))
+            inputStream.close()
             val changeNodes: NodeList = this.xPath.compile("changeList/change").evaluate(changeSetDoc, XPathConstants.NODESET) as NodeList
             for (i in 0 until changeNodes.length){
                 val version: String = this.xPath.compile("@version").evaluate(changeNodes.item(i), XPathConstants.STRING) as String
@@ -78,7 +112,6 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val fileUtil: FileUt
                 val tasks = buildVersionTasks(taskNodes)
                 this.changes.add(Change(version, tasks))
             }
-
         } catch (e: Exception) {
             when(e){
                 is SAXException, is ParserConfigurationException, is IOException, is XPathExpressionException -> {
@@ -86,8 +119,37 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val fileUtil: FileUt
                 }
                 else -> throw e
             }
-
         }
+    }
+
+    fun buildJSON(inputStream: InputStream){
+        val mapper = ObjectMapper().registerModule(KotlinModule())
+        this.changes = mapper.readValue(IOUtils.toByteArray(inputStream))
+        this.changes.forEach { c -> c.tasks!!.forEach { t -> t.databaseConnector = this.databaseConnector } }
+    }
+
+    fun buildChanges(path: Path){
+        var inputStream: InputStream
+
+        if(Files.exists(path)){
+            try {
+                inputStream = FileInputStream(path.toString())
+            } catch (e: FileNotFoundException) {
+                this.LOGGER.error(e.message, e)
+                throw MagicCarpetException("Unable to find file: ".plus(path.toString()))
+            }
+        }
+        else {
+            this.LOGGER.error("File {} does not exist", path.toString())
+            throw MagicCarpetException("Unable to find file: ".plus(path.toString()))
+        }
+        if(path.fileName.toString().endsWith(".json")){
+            buildJSON(inputStream)
+        }
+        else {
+            buildXML(inputStream)
+        }
+
     }
 
     fun buildVersionTasks(taskNodes: NodeList): List<Task> {
