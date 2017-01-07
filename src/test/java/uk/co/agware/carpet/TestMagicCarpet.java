@@ -9,7 +9,6 @@ import uk.co.agware.carpet.database.DatabaseConnector;
 import uk.co.agware.carpet.database.DefaultDatabaseConnector;
 import uk.co.agware.carpet.exception.MagicCarpetException;
 import uk.co.agware.carpet.stubs.ResultsSetStub;
-import uk.co.agware.carpet.util.FileUtil;
 
 import java.io.FileNotFoundException;
 import java.nio.file.Paths;
@@ -29,20 +28,18 @@ public class TestMagicCarpet {
 
     private DatabaseConnector databaseConnector;
     private MagicCarpet magicCarpet;
-    private FileUtil fileUtil;
     private Connection connection;
 
     @Before
     public void buildMocks() throws SQLException{
         databaseConnector = Mockito.mock(DefaultDatabaseConnector.class);
-        fileUtil = new FileUtil();
         connection = Mockito.mock(Connection.class);
         databaseConnector.setConnection(connection);
         DatabaseMetaData metaData = Mockito.mock(DatabaseMetaData.class);
         Mockito.when(connection.getMetaData()).thenReturn(metaData);
         Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new ResultsSetStub(false)); // Returns a results set which returns false for the .next() method
         Mockito.when(databaseConnector.executeStatement(Mockito.anyString())).thenReturn(true);
-        magicCarpet = new MagicCarpet(databaseConnector, fileUtil, false);
+        magicCarpet = new MagicCarpet(databaseConnector, false);
     }
 
     @Test
@@ -116,7 +113,7 @@ public class TestMagicCarpet {
     public void testExecuteFailureDoesRollBack() {
         DatabaseConnector databaseConnector = Mockito.mock(DatabaseConnector.class);
         Mockito.when(databaseConnector.executeStatement(Mockito.anyString())).thenReturn(false);
-        MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, fileUtil);
+        MagicCarpet magicCarpet = new MagicCarpet(databaseConnector);
 
         Exception e = null; // Need to catch the exception to make sure it was thrown but also that the methods were called on the databaseConnector
         try {
@@ -159,7 +156,7 @@ public class TestMagicCarpet {
 
     @Test
     public void testConstructorWithoutFlag() throws MagicCarpetException {
-        MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, fileUtil);
+        MagicCarpet magicCarpet = new MagicCarpet(databaseConnector);
         magicCarpet.parseChanges();
         Assert.assertTrue(magicCarpet.executeChanges());
     }

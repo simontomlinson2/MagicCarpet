@@ -1,5 +1,7 @@
 package uk.co.agware.carpet.change.tasks
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import org.apache.commons.io.IOUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -10,11 +12,10 @@ import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import com.fasterxml.jackson.annotation.JsonIgnore
 /**
  * Created by Simon on 29/12/2016.
  */
-class FileTask(@JsonIgnore override var databaseConnector: DatabaseConnector?, override var taskName: String, override var taskOrder: Int, val filePath: String, delimiter: String?) : Task {
+class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var taskName: String, @JsonProperty("taskOrder") override var taskOrder: Int, @JsonProperty("filePath") val filePath: String, @JsonProperty("delimiter") delimiter: String?) : Task {
 
     private val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
     val delimiter: String
@@ -22,12 +23,16 @@ class FileTask(@JsonIgnore override var databaseConnector: DatabaseConnector?, o
         this.delimiter = if (delimiter == null || "" == delimiter) ";" else delimiter
     }
 
+    constructor(): this("", 0, "", null) {
+
+    }
+
     @Override
-    override fun performTask(): Boolean {
+    override fun performTask(databaseConnector: DatabaseConnector?): Boolean {
         try {
             val contents: String = String(getFileContents())
             val statements: List<String> = contents.split(this.delimiter.orEmpty())
-            statements.forEach { s -> if(!this.databaseConnector!!.executeStatement(s.trim())) return false }
+            statements.forEach { s -> if(!databaseConnector!!.executeStatement(s.trim())) return false }
         } catch (e: Exception) {
             when(e){
                 is MagicCarpetException , is IOException -> {

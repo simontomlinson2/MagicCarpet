@@ -1,5 +1,7 @@
 package uk.co.agware.carpet.change;
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import uk.co.agware.carpet.change.tasks.Task
 
 
@@ -9,7 +11,7 @@ import uk.co.agware.carpet.change.tasks.Task
 //TODO Ensure the version String follows the correct format of NUMBER.NUMBER.NUMBER...
 //TODO Ensure the taskOrder string is either "" or an integer
 
-class Change(val version: String, val tasks: List<Task>? ) : Comparable<Change> {
+class Change @JsonCreator constructor(@JsonProperty("version") val version: String, @JsonProperty("tasks") val tasks: List<Task>? ) : Comparable<Change> {
 
     @Override
     override fun compareTo(o: Change): Int {
@@ -17,6 +19,7 @@ class Change(val version: String, val tasks: List<Task>? ) : Comparable<Change> 
         val oVersionValue = buildVersionValue(o.version)
         return thisVersionValue.compareTo(oVersionValue)
     }
+
 
     fun buildVersionValue(version: String): Double{
         val versionSplit = version.split(".")

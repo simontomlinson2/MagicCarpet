@@ -17,10 +17,9 @@ import uk.co.agware.carpet.database.DatabaseConnector
     Type(value = ScriptTask::class, name = "ScriptTask")
 )
 interface Task : Comparable<Task> {
-    var databaseConnector: DatabaseConnector?
     var taskName: String
     var taskOrder: Int
-    fun performTask(): Boolean
+    fun performTask(databaseConnector: DatabaseConnector?): Boolean
 
     @Override
     override fun compareTo(o: Task): Int {
