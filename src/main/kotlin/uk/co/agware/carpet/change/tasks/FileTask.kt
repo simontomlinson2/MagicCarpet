@@ -23,10 +23,6 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
         this.delimiter = if (delimiter == null || "" == delimiter) ";" else delimiter
     }
 
-    constructor(): this("", 0, "", null) {
-
-    }
-
     @Override
     override fun performTask(databaseConnector: DatabaseConnector?): Boolean {
         try {
@@ -50,9 +46,8 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
         if(this.filePath.toLowerCase().startsWith("classpath:")){
             val filename: String = this.filePath.replace("classpath:", "")
             var input : InputStream = javaClass.getClassLoader().getResourceAsStream(filename)
-            if(input != null) {
-                return IOUtils.toByteArray(input)
-            }
+            return IOUtils.toByteArray(input)
+
         }
         else {
             var path: Path = Paths.get(this.filePath)

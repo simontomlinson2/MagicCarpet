@@ -113,7 +113,7 @@ public class TestMagicCarpet {
     public void testExecuteFailureDoesRollBack() {
         DatabaseConnector databaseConnector = Mockito.mock(DatabaseConnector.class);
         Mockito.when(databaseConnector.executeStatement(Mockito.anyString())).thenReturn(false);
-        MagicCarpet magicCarpet = new MagicCarpet(databaseConnector);
+        MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, false);
 
         Exception e = null; // Need to catch the exception to make sure it was thrown but also that the methods were called on the databaseConnector
         try {
@@ -156,7 +156,7 @@ public class TestMagicCarpet {
 
     @Test
     public void testConstructorWithoutFlag() throws MagicCarpetException {
-        MagicCarpet magicCarpet = new MagicCarpet(databaseConnector);
+        MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, false);
         magicCarpet.parseChanges();
         Assert.assertTrue(magicCarpet.executeChanges());
     }

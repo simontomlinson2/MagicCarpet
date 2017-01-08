@@ -14,7 +14,7 @@ class ScriptTask @JsonCreator constructor(@JsonProperty("taskName") override var
 
     init {
         this.delimiter = if (delimiter == null || "" == delimiter) ";" else delimiter
-        this.inputList = this.script.split(this.delimiter.orEmpty())
+        this.inputList = this.script.split(this.delimiter)
     }
 
 

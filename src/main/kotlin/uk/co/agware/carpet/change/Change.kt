@@ -13,33 +13,28 @@ import uk.co.agware.carpet.change.tasks.Task
 
 class Change @JsonCreator constructor(@JsonProperty("version") val version: String, @JsonProperty("tasks") val tasks: List<Task>? ) : Comparable<Change> {
 
+   fun buildVersionValue(version: String): Double{
+        return version.split(".").map(String::toDouble)
+                .reduceIndexed { i, acc, next -> acc + next / Math.pow(10.0, i.toDouble()) }
+    }
+
     @Override
-    override fun compareTo(o: Change): Int {
+    override fun compareTo(other: Change): Int {
         val thisVersionValue = buildVersionValue(this.version)
-        val oVersionValue = buildVersionValue(o.version)
+        val oVersionValue = buildVersionValue(other.version)
         return thisVersionValue.compareTo(oVersionValue)
     }
 
-
-    fun buildVersionValue(version: String): Double{
-        val versionSplit = version.split(".")
-        var value = 0.0
-        versionSplit.forEachIndexed { index, v -> value += v.toDouble() / Math.pow(10.0, index.toDouble()) }
-        return value
-    }
-
-    fun equals(o: Change?): Boolean {
-        if (this == o) return true
-        if (o !is Change) return false
-
-        val change: Change = o
-
-        return if(this.version != null) this.version == change.version else false
+    @Override
+    override fun equals(other: Any?): Boolean {
+        if (this == other) return true
+        if (other !is Change) return false
+        return this.version == other.version
     }
 
     @Override
     override fun hashCode(): Int {
-        return if(this.version != null) this.version.hashCode() else 0;
+        return this.version.hashCode()
     }
 
     @Override

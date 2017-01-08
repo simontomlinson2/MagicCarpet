@@ -22,7 +22,7 @@ interface Task : Comparable<Task> {
     fun performTask(databaseConnector: DatabaseConnector?): Boolean
 
     @Override
-    override fun compareTo(o: Task): Int {
-        return this.taskOrder.compareTo(o.taskOrder)
+    override fun compareTo(other: Task): Int {
+        return this.taskOrder.compareTo(other.taskOrder)
     }
 }
