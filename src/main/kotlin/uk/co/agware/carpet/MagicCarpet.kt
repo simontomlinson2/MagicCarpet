@@ -18,8 +18,14 @@ import java.nio.file.Path
 import java.nio.file.Paths
 
 
-
 /**
+ * Executes a set of changes on a database from s file path.
+ *
+ * Changes can be JSON, XML or numbered files
+ *
+ * @property databaseConnector connection to the database to update.
+ * @property devMode when set changes will not be executed on the database
+ * @constructor Sets the database connection and dev mode.
  * Created by Simon on 29/12/2016.
  */
 class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean = false)   {
@@ -36,11 +42,25 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
     private val jsonMapper = ObjectMapper().registerModule(KotlinModule())
     private val xmlMapper = XmlMapper()
 
-    fun getJsonOrXmlPath(originalPath: Path) : Path {
+    /**
+     * Get the ChangeSet.json ot ChangeSet.xml
+     *
+     * @property originalPath the path to the Json or Xml File.
+     * @return Path path of the ChangeSet.json or ChangeSet.xml
+     *
+     */
+    private fun getJsonOrXmlPath(originalPath: Path) : Path {
         return if(Files.exists(originalPath.resolve("ChangeSet.json")) ) originalPath.resolve("ChangeSet.json") else originalPath.resolve("ChangeSet.xml")
     }
 
-    fun addTasksFromDirectory(path: Path) {
+    /**
+     * Get the Changes from a file structure
+     * If ChangeSet.json or ChangeSet.xml exist in the folder the changes are added to *changes*
+     * Else each directory is walked and files added to change list using the directory name as the task name.
+     *
+     * @property path the path of the root file structure.
+    */
+    private fun addTasksFromDirectory(path: Path) {
         Files.walk(path).forEach {
             p ->
             if (p != path) {
@@ -48,7 +68,8 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
                 if (Files.exists(filePath)) {
                     buildChanges(filePath)
                 } else if (Files.isDirectory(p)) {
-                    var tasks = Files.walk(p).sorted().filter { f -> f != p }.toArray().asList().map { it as Path }.mapIndexed { i, f ->
+                    //For Each File in directory. Sort it. Filter out the parent folder and create a FileTask from the file name and path
+                    val tasks = Files.walk(p).sorted().filter { f -> f != p }.toArray().asList().map { it as Path }.mapIndexed { i, f ->
                                 val name = f.fileName.toString().split(Regex("-|\\."))[1]
                                 return@mapIndexed FileTask(name, i, f.toString(), null)
                              }
@@ -58,12 +79,17 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
         }
     }
 
+    /**
+     * If devMode is true return
+     * @throws MagicCarpetException if path does not exist
+     * If Path contains ChangeSet.json or ChangeSet.xml then add changes to *changes*
+     * Else add the tasks from the directory structure
+     */
     fun parseChanges() {
         if(this.devMode) return
         //File Does Not Exist
         if(Files.notExists(this.path)) {
-            this.logger.error("No ChangeSet found")
-            throw MagicCarpetException("No ChangeSet found")
+            throw MagicCarpetException("Path not found")
         }
         val path = getJsonOrXmlPath(this.path)
         if(Files.isDirectory(this.path)){
@@ -81,19 +107,23 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
 
     }
 
-    fun buildChanges(path: Path){
+    /**
+     * Build the changes into *changes* from the path
+     * Detects if file is JSON or XML
+     * @throws MagicCarpetException if file does not exist
+     * @property path the path of the changes
+     */
+    private fun buildChanges(path: Path){
         val inputStream: InputStream
 
         if(Files.exists(path)){
             try {
                 inputStream = FileInputStream(path.toString())
             } catch (e: FileNotFoundException) {
-                this.logger.error(e.message, e)
                 throw MagicCarpetException("Unable to find file: ".plus(path.toString()))
             }
         }
         else {
-            this.logger.error("File {} does not exist", path.toString())
             throw MagicCarpetException("Unable to find file: ".plus(path.toString()))
         }
         if(path.fileName.toString().endsWith(".json")){
@@ -104,6 +134,7 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
         }
         inputStream.close()
     }
+
 
     fun executeChanges(): Boolean {
         if(this.devMode) {

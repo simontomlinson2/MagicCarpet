@@ -8,7 +8,6 @@ import java.sql.Date
 import java.sql.DriverManager
 import java.sql.SQLException
 import javax.naming.InitialContext
-import javax.naming.NamingException
 import javax.sql.DataSource
 /**
  * Created by Simon on 29/12/2016.
@@ -30,7 +29,6 @@ open class DefaultDatabaseConnector : DatabaseConnector {
             this.connection = connection
             this.connection!!.autoCommit = false
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
             throw MagicCarpetException (e.message, e)
         }
     }
@@ -38,17 +36,10 @@ open class DefaultDatabaseConnector : DatabaseConnector {
     @Override
     override fun setConnection(jdbcName: String) {
         try {
-            var source = InitialContext().lookup("java:comp/env/jdbc/" + jdbcName) as DataSource
+            val source = InitialContext().lookup("java:comp/env/jdbc/" + jdbcName) as DataSource
             this.connection = source.connection
             this.connection!!.autoCommit = false
         } catch (e: Exception) {
-            when(e){
-                is NamingException , is SQLException -> {
-                    this.logger.error(e.message, e)
-                }
-                else -> throw e
-            }
-            this.logger.error(e.message, e)
             throw MagicCarpetException(e.message, e)
         }
     }
@@ -59,7 +50,6 @@ open class DefaultDatabaseConnector : DatabaseConnector {
             this.connection = DriverManager.getConnection(connectionUrl, name, password)
             this.connection!!.autoCommit = false
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
             throw MagicCarpetException(e.message, e)
         }
     }
@@ -81,8 +71,7 @@ open class DefaultDatabaseConnector : DatabaseConnector {
             this.connection!!.close()
             return true
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
-            return false
+           throw MagicCarpetException(e.message, e)
         }
     }
 
@@ -94,8 +83,7 @@ open class DefaultDatabaseConnector : DatabaseConnector {
             statement.execute(sql)
             return true
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
-            return false
+            throw MagicCarpetException(e.message, e)
         }
     }
 
@@ -110,39 +98,36 @@ open class DefaultDatabaseConnector : DatabaseConnector {
             preparedStatement.execute()
             return true
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
-            return false
+            throw MagicCarpetException(e.message, e)
         }
     }
 
     @Override
     override fun checkChangeSetTable(createTable: Boolean) {
         try {
-            var dbm = this.connection!!.metaData
-            var tables = dbm.getTables(null, null, TABLE_NAME, null)
+            val dbm = this.connection!!.metaData
+            val tables = dbm.getTables(null, null, TABLE_NAME, null)
             if(!tables.next() && createTable){
-                var statement = this.connection!!.createStatement()
-                var createTableStatement: String = "CREATE TABLE $TABLE_NAME ($VERSION_COLUMN VARCHAR(255), $TASK_COLUMN VARCHAR(255), $DATE_COLUMN DATE)"
+                val statement = this.connection!!.createStatement()
+                val createTableStatement: String = "CREATE TABLE $TABLE_NAME ($VERSION_COLUMN VARCHAR(255), $TASK_COLUMN VARCHAR(255), $DATE_COLUMN DATE)"
                 statement.executeUpdate(createTableStatement)
                 commit()
             }
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
             throw MagicCarpetException(e.message, e)
         }
     }
 
     @Override
     override fun changeExists(version: String, taskName: String): Boolean{
-        var query: String = "SELECT * FROM $TABLE_NAME WHERE $VERSION_COLUMN = ? AND $TASK_COLUMN = ?"
+        val query: String = "SELECT * FROM $TABLE_NAME WHERE $VERSION_COLUMN = ? AND $TASK_COLUMN = ?"
         try {
-            var statement = this.connection!!.prepareStatement(query)
+            val statement = this.connection!!.prepareStatement(query)
             statement.setString(1, version)
             statement.setString(2, taskName)
             return statement.executeQuery().next()
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
-            return false
+            throw MagicCarpetException(e.message, e)
         }
     }
 
@@ -151,7 +136,7 @@ open class DefaultDatabaseConnector : DatabaseConnector {
         try {
             this.connection!!.rollback()
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
+            throw MagicCarpetException(e.message, e)
         }
     }
 

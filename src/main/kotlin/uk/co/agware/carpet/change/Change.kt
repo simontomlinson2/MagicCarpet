@@ -27,7 +27,6 @@ class Change @JsonCreator constructor(@JsonProperty("version") val version: Stri
 
     @Override
     override fun equals(other: Any?): Boolean {
-        if (this == other) return true
         if (other !is Change) return false
         return this.version == other.version
     }

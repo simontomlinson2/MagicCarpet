@@ -29,28 +29,21 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
             val contents: String = String(getFileContents())
             val statements: List<String> = contents.split(this.delimiter.orEmpty())
             statements.forEach { s -> if(!databaseConnector!!.executeStatement(s.trim())) return false }
-        } catch (e: Exception) {
-            when(e){
-                is MagicCarpetException , is IOException -> {
-                    this.LOGGER.error(e.message, e)
-                }
-                else -> throw e
-            }
-            return false
+        } catch (e: IOException) {
+            throw MagicCarpetException("Error executing statement", e)
         }
-
         return true
     }
 
     fun getFileContents(): ByteArray {
         if(this.filePath.toLowerCase().startsWith("classpath:")){
             val filename: String = this.filePath.replace("classpath:", "")
-            var input : InputStream = javaClass.getClassLoader().getResourceAsStream(filename)
+            val input : InputStream = javaClass.classLoader.getResourceAsStream(filename)
             return IOUtils.toByteArray(input)
 
         }
         else {
-            var path: Path = Paths.get(this.filePath)
+            val path: Path = Paths.get(this.filePath)
             if(Files.exists(path)){
                 return Files.readAllBytes(path)
             }
