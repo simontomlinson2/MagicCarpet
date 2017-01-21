@@ -10,6 +10,8 @@ import java.sql.SQLException
 import javax.naming.InitialContext
 import javax.sql.DataSource
 /**
+ * Default Database Connector implementation
+ *
  * Created by Simon on 29/12/2016.
  */
 open class DefaultDatabaseConnector : DatabaseConnector {
@@ -60,8 +62,8 @@ open class DefaultDatabaseConnector : DatabaseConnector {
             this.connection!!.commit()
             return true
         } catch (e: SQLException) {
-            this.logger.error(e.message, e)
-            return false
+            throw MagicCarpetException(e.message, e)
+
         }
     }
 

@@ -23,9 +23,10 @@ import java.nio.file.Paths
  *
  * Changes can be JSON, XML or numbered files
  *
- * @property databaseConnector connection to the database to update.
- * @property devMode when set changes will not be executed on the database
+ * @param databaseConnector connection to the database to update.
+ * @param devMode when set changes will not be executed on the database
  * @constructor Sets the database connection and dev mode.
+ * @see uk.co.agware.carpet.database.DatabaseConnector
  * Created by Simon on 29/12/2016.
  */
 class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean = false)   {
@@ -45,7 +46,7 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
     /**
      * Get the ChangeSet.json ot ChangeSet.xml
      *
-     * @property originalPath the path to the Json or Xml File.
+     * @param originalPath the path to the Json or Xml File.
      * @return Path path of the ChangeSet.json or ChangeSet.xml
      *
      */
@@ -58,7 +59,7 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
      * If ChangeSet.json or ChangeSet.xml exist in the folder the changes are added to *changes*
      * Else each directory is walked and files added to change list using the directory name as the task name.
      *
-     * @property path the path of the root file structure.
+     * @param path the path of the root file structure.
     */
     private fun addTasksFromDirectory(path: Path) {
         Files.walk(path).forEach {
@@ -110,8 +111,9 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
     /**
      * Build the changes into *changes* from the path
      * Detects if file is JSON or XML
+     *
+     * @param path the path of the changes
      * @throws MagicCarpetException if file does not exist
-     * @property path the path of the changes
      */
     private fun buildChanges(path: Path){
         val inputStream: InputStream
@@ -135,7 +137,12 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
         inputStream.close()
     }
 
-
+    /**
+     * Perform each task on the database
+     * No changes are implemented if *devMode* is set
+     * @throws MagicCarpetException on task fail
+     * @return boolean tasks all executed successfully
+     */
     fun executeChanges(): Boolean {
         if(this.devMode) {
             this.logger.info("MagicCarpet set to Dev Mode, changes not being implemented")
@@ -163,6 +170,12 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
         return true
     }
 
+    /**
+     * Parse Changes and Execute
+     * When *devMode* is set return
+     * @throws MagicCarpetException on task fail
+     * @return boolean tasks all executed successfully
+     */
     fun run() {
         if(this.devMode) {
             this.logger.info("MagicCarpet set to Dev Mode, changes not being implemented")

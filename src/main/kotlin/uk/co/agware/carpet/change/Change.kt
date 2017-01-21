@@ -6,13 +6,18 @@ import uk.co.agware.carpet.change.tasks.Task
 
 
 /**
+ * Implement a change set
+ * @constructor create the change with tasks
+ * @property version the version of the change
+ * @property tasks List of tasks for the change
  * Created by Simon on 29/12/2016.
  */
-//TODO Ensure the version String follows the correct format of NUMBER.NUMBER.NUMBER...
-//TODO Ensure the taskOrder string is either "" or an integer
-
 class Change @JsonCreator constructor(@JsonProperty("version") val version: String, @JsonProperty("tasks") val tasks: List<Task>? ) : Comparable<Change> {
 
+    /**
+     * Build the version from a String
+     * @param version
+     */
    fun buildVersionValue(version: String): Double{
         return version.split(".").map(String::toDouble)
                 .reduceIndexed { i, acc, next -> acc + next / Math.pow(10.0, i.toDouble()) }
