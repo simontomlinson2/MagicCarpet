@@ -10,18 +10,32 @@ import java.sql.SQLException
 import javax.naming.InitialContext
 import javax.sql.DataSource
 /**
+ * // TODO Formatting, detail etc
  * Default Database Connector implementation
  *
  * Created by Simon on 29/12/2016.
  */
+// TODO I'd simplify this class to only accepting a "connection" object to be honest, needing to support all these
+// TODO different ways to set the connection is pointless, the people using the lib can just do it themselves and
+// TODO supply what is easiest for us
+
+// TODO All these methods that return boolean, its pointless to do so, they either return true or throw an exception
+
+// TODO This class misses any of the actual changes I asked for in it:
+// TODO     * It should create a "hash" column on the ChangeSet table in which to store a hash of the query being executed
+// TODO     * It should, when creating the table, check for this column separately to the standard "does the table exist"
+// TODO       as this is a new column and we need to support backwards compatibility with existing users
+
+// TODO The exception handling needs to be better, this class is literally doing the exact thing I said it shouldn't
+// TODO which is simply wrapping the checked exceptions into an unchecked one without any extra detail where possible
 open class DefaultDatabaseConnector : DatabaseConnector {
-    
+
     companion object {
         private val TABLE_NAME = "change_set"
         private val VERSION_COLUMN = "version"
         private val TASK_COLUMN = "task"
         private val DATE_COLUMN = "applied"
-    }
+    } // TODO Space here
     private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
     private var connection: Connection? = null
 
