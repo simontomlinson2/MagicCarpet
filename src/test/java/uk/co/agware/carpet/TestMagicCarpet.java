@@ -38,7 +38,6 @@ public class TestMagicCarpet {
         DatabaseMetaData metaData = Mockito.mock(DatabaseMetaData.class);
         Mockito.when(connection.getMetaData()).thenReturn(metaData);
         Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new ResultsSetStub(false)); // Returns a results set which returns false for the .next() method
-        Mockito.when(databaseConnector.executeStatement(Mockito.anyString())).thenReturn(true);
         magicCarpet = new MagicCarpet(databaseConnector, false);
     }
 
@@ -53,7 +52,7 @@ public class TestMagicCarpet {
         magicCarpet.setPath(Paths.get(CHANGE_SET_DIRECTORY_NESTED));
         magicCarpet.parseChanges();
         Assert.assertEquals(3, magicCarpet.getChanges().size());
-        Assert.assertTrue(magicCarpet.executeChanges());
+        magicCarpet.executeChanges();
         Mockito.verify(databaseConnector).commit();
         Mockito.verify(databaseConnector).close();
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
@@ -96,7 +95,7 @@ public class TestMagicCarpet {
     public void testExecuteChanges() throws FileNotFoundException, MagicCarpetException {
         magicCarpet.setPath(Paths.get(CHANGE_SET_FILE));
         magicCarpet.parseChanges();
-        Assert.assertTrue(magicCarpet.executeChanges());
+        magicCarpet.executeChanges();
         Mockito.verify(databaseConnector).commit();
         Mockito.verify(databaseConnector).close();
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
@@ -112,7 +111,6 @@ public class TestMagicCarpet {
     @Test
     public void testExecuteFailureDoesRollBack() {
         DatabaseConnector databaseConnector = Mockito.mock(DatabaseConnector.class);
-        Mockito.when(databaseConnector.executeStatement(Mockito.anyString())).thenReturn(false);
         MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, false);
 
         Exception e = null; // Need to catch the exception to make sure it was thrown but also that the methods were called on the databaseConnector
@@ -141,7 +139,7 @@ public class TestMagicCarpet {
         magicCarpet.parseChanges();
         Assert.assertEquals(1, magicCarpet.getChanges().size());
         Assert.assertEquals(1, magicCarpet.getChanges().get(0).getTasks().size());
-        Assert.assertTrue(magicCarpet.executeChanges());
+        magicCarpet.executeChanges();
         Mockito.verify(databaseConnector, Mockito.times(2)).executeStatement(Mockito.anyString());
     }
 
@@ -150,7 +148,7 @@ public class TestMagicCarpet {
         magicCarpet.setPath(Paths.get(CHANGE_SET_FILE));
         magicCarpet.setDevMode(true);
         magicCarpet.run();
-        Assert.assertFalse(magicCarpet.executeChanges());
+        magicCarpet.executeChanges();
         Mockito.verify(databaseConnector, Mockito.times(0)).executeStatement(Mockito.anyString());
     }
 
@@ -158,6 +156,6 @@ public class TestMagicCarpet {
     public void testConstructorWithoutFlag() throws MagicCarpetException {
         MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, false);
         magicCarpet.parseChanges();
-        Assert.assertTrue(magicCarpet.executeChanges());
+        magicCarpet.executeChanges();
     }
 }

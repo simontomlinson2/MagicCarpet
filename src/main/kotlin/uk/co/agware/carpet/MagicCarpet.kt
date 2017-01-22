@@ -11,20 +11,20 @@ import uk.co.agware.carpet.change.tasks.FileTask
 import uk.co.agware.carpet.database.DatabaseConnector
 import uk.co.agware.carpet.exception.MagicCarpetException
 import java.io.FileInputStream
-import java.io.FileNotFoundException
-import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 
 
 /**
- * // TODO "s" file path?
- * Executes a set of changes on a database from s file path.
- *
- * // TODO This is the main entry point to the library and basically the only class the user will directly
- * // TODO interact with for the majority of configurations, this needs to have a bit more detail still
- * Changes can be JSON, XML or numbered files
+ * Executes a set of changes on a database from a specified change set.
+ * Accepts changes in JSON, XML or as a directory structure with numbered files
+ * Changes are executed through the assigned database connection
+ * Changes are tracked through an additional database table
+ * Table will automatically be added or updated when run
+ * If a change has already been made on the database it is ignored
+ * Change statements are hashed in the database table
+ * Changes can be Scripts, files or files on the classpath
  *
  * @param databaseConnector connection to the database to update.
  * @param devMode when set changes will not be executed on the database
@@ -32,10 +32,6 @@ import java.nio.file.Paths
  * @see uk.co.agware.carpet.database.DatabaseConnector
  * Created by Simon on 29/12/2016.
  */
-// TODO public methods use JavaDoc comments, private use block comments, inline use single line comments
-// TODO there is a nice white line down the right of IntelliJ, use that to show you how long a line of code should roughly be
-// TODO i.e. That line should have just gone over it
-
 // TODO Needs debug level logging in places it makes sense to have it so that it is easier to see whats going on
 // TODO for someone with this library in their application if they need to actually do some debugging
 class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean = false)   {
@@ -52,31 +48,22 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
     private val jsonMapper = ObjectMapper().registerModule(KotlinModule())
     private val xmlMapper = XmlMapper()
 
-    /**
-     * // TODO "ot"
-     * // TODO Description is pointless, it is exactly what the method name says
-     * Get the ChangeSet.json ot ChangeSet.xml
-     *
-     * @param originalPath the path to the Json or Xml File.
-     * @return Path path of the ChangeSet.json or ChangeSet.xml
-     *
-     */
-    // TODO That is a pointlessly long statement, format it so that its actually readable
+
     private fun getJsonOrXmlPath(originalPath: Path) : Path {
-        return if(Files.exists(originalPath.resolve("ChangeSet.json")) ) originalPath.resolve("ChangeSet.json") else originalPath.resolve("ChangeSet.xml")
+        return if(Files.exists(originalPath.resolve("ChangeSet.json")) )
+            originalPath.resolve("ChangeSet.json")
+        else originalPath.resolve("ChangeSet.xml")
     }
 
-    /**
+    /*
      * Get the Changes from a file structure
      * If ChangeSet.json or ChangeSet.xml exist in the folder the changes are added to *changes*
      * Else each directory is walked and files added to change list using the directory name as the task name.
      *
      * @param path the path of the root file structure.
     */
-    // TODO Format the code better, this should also return a collection instead of adding to the existing one from within
-    // TODO Each call in the chain should be on a new line and aligned with the previous (Have to do it manually for now)
-    // TODO Avoid multi-line blocks inside the lambdas where possible as it makes the code messy and annoying
-    private fun addTasksFromDirectory(path: Path) {
+    private fun addTasksFromDirectory(path: Path): List<Change> {
+        var changes: List<Change> = listOf()
         Files.walk(path).forEach {
             p ->
             if (p != path) {
@@ -85,21 +72,28 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
                     buildChanges(filePath)
                 } else if (Files.isDirectory(p)) {
                     //For Each File in directory. Sort it. Filter out the parent folder and create a FileTask from the file name and path
-                    val tasks = Files.walk(p).sorted().filter { f -> f != p }.toArray().asList().map { it as Path }.mapIndexed { i, f ->
+                    val tasks = Files.walk(p)
+                            .sorted()
+                            .filter { f -> f != p }
+                            .toArray()
+                            .asList()
+                            .map { it as Path }
+                            .mapIndexed { i, f ->
                                 val name = f.fileName.toString().split(Regex("-|\\."))[1]
+                                logger.debug("Creating Task for file: {}", name)
                                 return@mapIndexed FileTask(name, i, f.toString(), null)
-                             }
-                    this.changes += Change(p.fileName.toString(), tasks)
+                            }
+                    logger.debug("Creating change for : {}", p.fileName.toString())
+                    changes += Change(p.fileName.toString(), tasks)
                 }
             }
         }
+        return changes
     }
 
     /**
-     * // TODO That is not how to write a comment that includes @throws, check the docs again
      * If devMode is true return
-     * @throws MagicCarpetException if path does not exist
-     * If Path contains ChangeSet.json or ChangeSet.xml then add changes to *changes*
+     * If Path contains ChangeSet.json or ChangeSet.xml then add changes to changes
      * Else add the tasks from the directory structure
      */
     fun parseChanges() {
@@ -112,86 +106,80 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
         if(Files.isDirectory(this.path)){
             //Contains ChangeSet.xml or ChangeSet.json
             if (Files.exists(path)) {
+                logger.debug("Building changes for: {} ", path)
                 buildChanges(path)
             }
             else{
+                logger.debug("Adding tasks from directory structure at: {} ", path)
                 addTasksFromDirectory(this.path)
             }
         }
         else{
+            logger.debug("Adding tasks from directory structure at: {} ", this.path)
             buildChanges(this.path)
         }
 
     }
 
-    /**
-     * Build the changes into *changes* from the path
+    /*
+     * Build the changes into changes from the path
      * Detects if file is JSON or XML
-     *
-     * @param path the path of the changes
-     * @throws MagicCarpetException if file does not exist
      */
-    // TODO Use string templating in your exception messages instead of what you have done there
-    // TODO Also shouldn't need to call .toString() on an object, toString gets called implicitly most of the time
     private fun buildChanges(path: Path){
-        val inputStream: InputStream
-
-        // TODO Use a try/finally or try with resources pattern here, you wont be closing inputStream when you get errors
-        if(Files.exists(path)){
-            try {
-                inputStream = FileInputStream(path.toString())
-            } catch (e: FileNotFoundException) { // TODO Should go on the next line, I hate catch here, it makes no sense
-                throw MagicCarpetException("Unable to find file: ".plus(path.toString()))
+        FileInputStream(path.toString()).use { inputStream ->
+            if (!Files.exists(path))
+                throw MagicCarpetException("File does not exist: $path")
+            if(path.fileName.toString().endsWith(".json")){
+                this.changes = jsonMapper.readValue(inputStream)
+            }
+            else {
+                this.changes = xmlMapper.readValue(inputStream)
             }
         }
-        else {
-            throw MagicCarpetException("Unable to find file: ".plus(path.toString()))
-        }
-        if(path.fileName.toString().endsWith(".json")){
-            this.changes = jsonMapper.readValue(inputStream)
-        }
-        else {
-            this.changes = xmlMapper.readValue(inputStream)
-        }
-        inputStream.close()
     }
+
 
     /**
      * Perform each task on the database
-     * No changes are implemented if *devMode* is set // TODO Should be a space between the description and the extra info
-     * @throws MagicCarpetException on task fail
+     * No changes are implemented if devMode is set
+     *
      * @return boolean tasks all executed successfully
      */
-    // TODO Returning a boolean from this method doesn't really work, should be throwing an error when something goes wrong
-    // TODO And just not returning anything if things are OK / not needed
-    fun executeChanges(): Boolean {
+    fun executeChanges() {
         if(this.devMode) {
             this.logger.info("MagicCarpet set to Dev Mode, changes not being implemented")
-            return false
+            return
         }
         this.databaseConnector.checkChangeSetTable(this.createTable)
         if(!this.changes.isEmpty()) {
-            // TODO Need to format this better, see above comments on how, that's practically unreadable right now
-            Sequence {  this.changes.iterator() }.forEach { c -> Sequence { c.tasks!!.sorted().iterator() }.forEach { t ->
-                if(!this.databaseConnector.changeExists(c.version, t.taskName)){
-                    this.logger.info("Applying Version {} Task {}", c.version, t.taskName)
-                    if(t.performTask(this.databaseConnector)){
-                        this.databaseConnector.insertChange(c.version, t.taskName)
-                    }
-                    else {
-                        this.databaseConnector.rollBack()
-                        this.databaseConnector.close()
-                        // TODO String templating
-                        throw MagicCarpetException(String.format("Error while inserting Task %s for Change Version %s, see the log for additional details", t.taskName, c.version))
-                    }
-                }
-            } }
-            // TODO The connection should always be closed, no matter what happens, try/finally or some variation of
-            this.logger.info("Database updates complete")
-            this.databaseConnector.commit()
-            this.databaseConnector.close()
+            Sequence {  this.changes.iterator() }
+                    .forEach { c ->
+                        Sequence { c.tasks!!.sorted().iterator() }
+                                .forEach { t ->
+                                    if(!this.databaseConnector.changeExists(c.version, t.taskName, t.query)){
+                                        this.logger.info("Applying Version {} Task {}", c.version, t.taskName)
+                                        try {
+                                            t.performTask(this.databaseConnector)
+                                            this.databaseConnector.insertChange(c.version, t.taskName, t.query)
+                                            this.logger.info("Database updates complete")
+                                            this.databaseConnector.commit()
+                                        }
+                                        catch (e: MagicCarpetException){
+                                            this.databaseConnector.rollBack()
+                                            throw MagicCarpetException("Error while inserting Task ${t.taskName}" +
+                                                                               " for Change Version ${c.version}," +
+                                                                               " see the log for additional details")
+                                        }
+                                        finally {
+                                            this.databaseConnector.close()
+                                        }
+                                    }
+                                    else {
+                                        this.databaseConnector.updateChange(c.version, t.taskName, t.query)
+                                    }
+                                } }
+
         }
-        return true
     }
 
     /**

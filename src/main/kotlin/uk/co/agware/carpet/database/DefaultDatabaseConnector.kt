@@ -5,37 +5,25 @@ import org.slf4j.LoggerFactory
 import uk.co.agware.carpet.exception.MagicCarpetException
 import java.sql.Connection
 import java.sql.Date
-import java.sql.DriverManager
 import java.sql.SQLException
-import javax.naming.InitialContext
-import javax.sql.DataSource
+
 /**
- * // TODO Formatting, detail etc
- * Default Database Connector implementation
+ * Default Database Connector implementation.
+ * Creates a connection to a database.
+ * Sets up the table to store changes that have been applied to the database
  *
  * Created by Simon on 29/12/2016.
  */
-// TODO I'd simplify this class to only accepting a "connection" object to be honest, needing to support all these
-// TODO different ways to set the connection is pointless, the people using the lib can just do it themselves and
-// TODO supply what is easiest for us
-
-// TODO All these methods that return boolean, its pointless to do so, they either return true or throw an exception
-
-// TODO This class misses any of the actual changes I asked for in it:
-// TODO     * It should create a "hash" column on the ChangeSet table in which to store a hash of the query being executed
-// TODO     * It should, when creating the table, check for this column separately to the standard "does the table exist"
-// TODO       as this is a new column and we need to support backwards compatibility with existing users
-
-// TODO The exception handling needs to be better, this class is literally doing the exact thing I said it shouldn't
-// TODO which is simply wrapping the checked exceptions into an unchecked one without any extra detail where possible
 open class DefaultDatabaseConnector : DatabaseConnector {
 
     companion object {
         private val TABLE_NAME = "change_set"
         private val VERSION_COLUMN = "version"
         private val TASK_COLUMN = "task"
+        private val HASH_COLUMN = "query_hash"
         private val DATE_COLUMN = "applied"
-    } // TODO Space here
+    }
+
     private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
     private var connection: Connection? = null
 
@@ -45,76 +33,52 @@ open class DefaultDatabaseConnector : DatabaseConnector {
             this.connection = connection
             this.connection!!.autoCommit = false
         } catch (e: SQLException) {
-            throw MagicCarpetException (e.message, e)
+            throw MagicCarpetException ("Could not connect to database", e)
         }
     }
 
     @Override
-    override fun setConnection(jdbcName: String) {
-        try {
-            val source = InitialContext().lookup("java:comp/env/jdbc/" + jdbcName) as DataSource
-            this.connection = source.connection
-            this.connection!!.autoCommit = false
-        } catch (e: Exception) {
-            throw MagicCarpetException(e.message, e)
-        }
-    }
-
-    @Override
-    override fun setConnection(connectionUrl: String, name: String, password: String) {
-        try {
-            this.connection = DriverManager.getConnection(connectionUrl, name, password)
-            this.connection!!.autoCommit = false
-        } catch (e: SQLException) {
-            throw MagicCarpetException(e.message, e)
-        }
-    }
-
-    @Override
-    override fun commit(): Boolean{
+    override fun commit(){
         try {
             this.connection!!.commit()
-            return true
         } catch (e: SQLException) {
-            throw MagicCarpetException(e.message, e)
+            throw MagicCarpetException("Could not commit changes to database", e)
 
         }
     }
 
     @Override
-    override fun close(): Boolean{
+    override fun close(){
         try {
             this.connection!!.close()
-            return true
         } catch (e: SQLException) {
-           throw MagicCarpetException(e.message, e)
+            throw MagicCarpetException("Could not close database connection", e)
         }
     }
 
     @Override
-    override fun executeStatement(sql: String): Boolean{
+    override fun executeStatement(sql: String){
         try {
             val statement = this.connection!!.createStatement()
             this.logger.info("Executing statement: {}", sql)
             statement.execute(sql)
-            return true
         } catch (e: SQLException) {
-            throw MagicCarpetException(e.message, e)
+            throw MagicCarpetException("Could not execute statement: $sql", e)
         }
     }
 
     @Override
-    override fun insertChange(version: String, taskName: String): Boolean{
-        val sql: String = "INSERT INTO $TABLE_NAME ($VERSION_COLUMN,$TASK_COLUMN,$DATE_COLUMN) VALUES (?,?,?)"
+    override fun insertChange(version: String, taskName: String, query: String){
+        val sql: String = "INSERT INTO $TABLE_NAME ($VERSION_COLUMN,$TASK_COLUMN,$HASH_COLUMN,$DATE_COLUMN) VALUES (?,?,?,?)"
         try {
             val preparedStatement = this.connection!!.prepareStatement(sql)
             preparedStatement.setString(1, version)
             preparedStatement.setString(2, taskName)
-            preparedStatement.setDate(3, Date(System.currentTimeMillis()))
+            preparedStatement.setInt(3, query.hashCode())
+            preparedStatement.setDate(4, Date(System.currentTimeMillis()))
             preparedStatement.execute()
-            return true
         } catch (e: SQLException) {
-            throw MagicCarpetException(e.message, e)
+            throw MagicCarpetException("Could not insert task: $taskName for change: $version", e)
         }
     }
 
@@ -125,25 +89,63 @@ open class DefaultDatabaseConnector : DatabaseConnector {
             val tables = dbm.getTables(null, null, TABLE_NAME, null)
             if(!tables.next() && createTable){
                 val statement = this.connection!!.createStatement()
-                val createTableStatement: String = "CREATE TABLE $TABLE_NAME ($VERSION_COLUMN VARCHAR(255), $TASK_COLUMN VARCHAR(255), $DATE_COLUMN DATE)"
+                val createTableStatement: String = "CREATE TABLE $TABLE_NAME ($VERSION_COLUMN VARCHAR(255), $TASK_COLUMN VARCHAR(255), $HASH_COLUMN BIGINT, $DATE_COLUMN DATE)"
+                statement.executeUpdate(createTableStatement)
+                commit()
+            }
+            else if (tables.next()){
+                checkUpdateTable(createTable)
+            }
+        } catch (e: SQLException) {
+            throw MagicCarpetException("Could not create table", e)
+        }
+    }
+
+    private fun checkUpdateTable(updateTable: Boolean){
+        try {
+            val dbm = this.connection!!.metaData
+            val columns = dbm.getColumns(null, null, TABLE_NAME, HASH_COLUMN)
+            if(!columns.next() && updateTable){
+                val statement = this.connection!!.createStatement()
+                val createTableStatement: String = "ALTER TABLE $TABLE_NAME ADD COLUMN $HASH_COLUMN BIGINT"
                 statement.executeUpdate(createTableStatement)
                 commit()
             }
         } catch (e: SQLException) {
-            throw MagicCarpetException(e.message, e)
+            throw MagicCarpetException("Could not alter table: $TABLE_NAME with Column: $HASH_COLUMN", e)
         }
     }
 
     @Override
-    override fun changeExists(version: String, taskName: String): Boolean{
-        val query: String = "SELECT * FROM $TABLE_NAME WHERE $VERSION_COLUMN = ? AND $TASK_COLUMN = ?"
+    override fun changeExists(version: String, taskName: String, query: String): Boolean{
+        //To support older version if query is null don't check for it
+        val select: String = "SELECT * FROM $TABLE_NAME WHERE $VERSION_COLUMN = ? AND $TASK_COLUMN = ?" +
+                " AND ($HASH_COLUMN = ? OR $HASH_COLUMN IS NULL)"
         try {
-            val statement = this.connection!!.prepareStatement(query)
+            val statement = this.connection!!.prepareStatement(select)
             statement.setString(1, version)
             statement.setString(2, taskName)
+            statement.setInt(3, query.hashCode())
             return statement.executeQuery().next()
         } catch (e: SQLException) {
-            throw MagicCarpetException(e.message, e)
+            throw MagicCarpetException("Could not execute statement: $select", e)
+        }
+    }
+
+    @Override
+    override fun updateChange(version: String, taskName: String, query: String){
+        //Update the row using version and task name where query is null
+        val select: String = "UPDATE $TABLE_NAME SET $HASH_COLUMN = ? WHERE $VERSION_COLUMN = ? AND $TASK_COLUMN = ?" +
+                " AND $HASH_COLUMN IS NULL"
+        try {
+            val statement = this.connection!!.prepareStatement(select)
+            statement.setInt(1, query.hashCode())
+            statement.setString(2, version)
+            statement.setString(3, taskName)
+            statement.executeQuery()
+            commit()
+        } catch (e: SQLException) {
+            throw MagicCarpetException("Could not execute statement: $select", e)
         }
     }
 
@@ -152,7 +154,7 @@ open class DefaultDatabaseConnector : DatabaseConnector {
         try {
             this.connection!!.rollback()
         } catch (e: SQLException) {
-            throw MagicCarpetException(e.message, e)
+            throw MagicCarpetException("Could not roll back changes", e)
         }
     }
 

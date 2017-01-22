@@ -5,12 +5,6 @@ import com.fasterxml.jackson.annotation.JsonSubTypes.Type
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import uk.co.agware.carpet.database.DatabaseConnector
 
-/**
- * // TODO pointless comment
- * Task interface
- *
- * Created by Simon on 29/12/2016.
- */
 @JsonTypeInfo(
     use = JsonTypeInfo.Id.NAME,
     include = JsonTypeInfo.As.PROPERTY,
@@ -22,12 +16,14 @@ import uk.co.agware.carpet.database.DatabaseConnector
 interface Task : Comparable<Task> {
     var taskName: String
     var taskOrder: Int
+    val query: String
 
     /**
      * Execute the task on the database
      * @param databaseConnector the connection to the database
      */
-    fun performTask(databaseConnector: DatabaseConnector?): Boolean
+    fun performTask(databaseConnector: DatabaseConnector?)
+
 
     @Override
     override fun compareTo(other: Task): Int {

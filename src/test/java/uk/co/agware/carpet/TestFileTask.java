@@ -18,7 +18,6 @@ public class TestFileTask {
     @Before
     public void buildMocks(){
         databaseConnector = Mockito.mock(DatabaseConnector.class);
-        Mockito.when(databaseConnector.executeStatement(Mockito.anyString())).thenReturn(true);
     }
 
     @Test
@@ -26,7 +25,7 @@ public class TestFileTask {
         FileTask task = new FileTask("Task 1", 1, "src/test/files/test.sql", ";");
         Assert.assertEquals("Task 1", task.getTaskName());
         Assert.assertEquals(1, task.getTaskOrder());
-        Assert.assertTrue(task.performTask(databaseConnector));
+        task.performTask(databaseConnector);
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         Mockito.verify(databaseConnector, Mockito.times(2)).executeStatement(statements.capture());
         Assert.assertEquals(2, statements.getAllValues().size());
@@ -39,7 +38,7 @@ public class TestFileTask {
         FileTask task = new FileTask("Task 1", 1, "src/test/files/test.sql", "");
         Assert.assertEquals("Task 1", task.getTaskName());
         Assert.assertEquals(1, task.getTaskOrder());
-        Assert.assertTrue(task.performTask(databaseConnector));
+        task.performTask(databaseConnector);
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         Mockito.verify(databaseConnector, Mockito.times(2)).executeStatement(statements.capture());
         Assert.assertEquals(2, statements.getAllValues().size());
@@ -52,7 +51,7 @@ public class TestFileTask {
         FileTask task = new FileTask("Task 1", 1, "src/test/files/test.sql", null);
         Assert.assertEquals("Task 1", task.getTaskName());
         Assert.assertEquals(1, task.getTaskOrder());
-        Assert.assertTrue(task.performTask(databaseConnector));
+        task.performTask(databaseConnector);
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         Mockito.verify(databaseConnector, Mockito.times(2)).executeStatement(statements.capture());
         Assert.assertEquals(2, statements.getAllValues().size());
@@ -65,7 +64,7 @@ public class TestFileTask {
         FileTask task = new FileTask("Task 2", 2, "classpath:classpathTest.sql", ","); // Testing a random delimiter as well
         Assert.assertEquals("Task 2", task.getTaskName());
         Assert.assertEquals(2, task.getTaskOrder());
-        Assert.assertTrue(task.performTask(databaseConnector));
+        task.performTask(databaseConnector);
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         Mockito.verify(databaseConnector, Mockito.times(2)).executeStatement(statements.capture());
         Assert.assertEquals(2, statements.getAllValues().size());
