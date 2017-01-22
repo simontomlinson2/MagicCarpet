@@ -61,11 +61,11 @@ public class TestDatabaseConnector {
         ArgumentCaptor<String> statement = ArgumentCaptor.forClass(String.class);
         Mockito.verify(connection).prepareStatement(statement.capture());
         Mockito.verify(preparedStatement).execute();
-        String expectedStatement = "INSERT INTO change_set (version,task,hash,applied) VALUES (?,?,?,?)";
+        String expectedStatement = "INSERT INTO change_set (version,task,query_hash,applied) VALUES (?,?,?,?)";
         Assert.assertEquals(expectedStatement,statement.getValue());
         Mockito.verify(preparedStatement).setString(1, "1.0.0");
         Mockito.verify(preparedStatement).setString(2, "Create DB");
-        Mockito.verify(preparedStatement).setString(3, "SELECT * FROM Table");
+        Mockito.verify(preparedStatement).setInt(3, "SELECT * FROM Table".hashCode());
         Mockito.verify(preparedStatement).setDate(Mockito.anyInt(), Mockito.anyObject());
     }
 
@@ -90,7 +90,7 @@ public class TestDatabaseConnector {
         Mockito.when(metaData.getTables(null, null, "change_set", null)).thenReturn(new ResultsSetStub(true));
         Mockito.when(metaData.getColumns(null, null, "change_set", "query_hash")).thenReturn(new ResultsSetStub(true));
         databaseConnector.checkChangeSetTable(true);
-        Mockito.verify(connection).getMetaData();
+        Mockito.verify(connection, Mockito.times(2)).getMetaData();
         Mockito.verify(metaData).getTables(null, null, "change_set", null);
         Mockito.verify(metaData).getColumns(null, null, "change_set", "query_hash");
         Mockito.verify(statement, Mockito.times(0)).executeUpdate(Mockito.anyString()); // Ensure the create statement wasn't run
@@ -100,11 +100,11 @@ public class TestDatabaseConnector {
     public void checkChangeDoesntExist() throws SQLException {
         Mockito.when(preparedStatement.executeQuery()).thenReturn(new ResultsSetStub(false));
         Assert.assertFalse(databaseConnector.changeExists("1.0.0", "Create DB", "SELECT * FROM Table"));
-        String expectedSql = "SELECT * FROM change_set WHERE version = ? AND task = ? AND hash = ?";
+        String expectedSql = "SELECT * FROM change_set WHERE version = ? AND task = ? AND (query_hash = ? OR query_hash IS NULL)";
         Mockito.verify(connection).prepareStatement(expectedSql);
         Mockito.verify(preparedStatement).setString(1, "1.0.0");
         Mockito.verify(preparedStatement).setString(2, "Create DB");
-        Mockito.verify(preparedStatement).setString(3, "SELECT * FROM Table");
+        Mockito.verify(preparedStatement).setInt(3, "SELECT * FROM Table".hashCode());
     }
 
     @Test

@@ -53,8 +53,8 @@ public class TestMagicCarpet {
         magicCarpet.parseChanges();
         Assert.assertEquals(3, magicCarpet.getChanges().size());
         magicCarpet.executeChanges();
-        Mockito.verify(databaseConnector).commit();
-        Mockito.verify(databaseConnector).close();
+        Mockito.verify(databaseConnector, Mockito.times(6)).commit();
+        Mockito.verify(databaseConnector, Mockito.times(6)).close();
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         Mockito.verify(databaseConnector, Mockito.times(6)).executeStatement(statements.capture());
         Assert.assertEquals(6, statements.getAllValues().size());
@@ -96,8 +96,8 @@ public class TestMagicCarpet {
         magicCarpet.setPath(Paths.get(CHANGE_SET_FILE));
         magicCarpet.parseChanges();
         magicCarpet.executeChanges();
-        Mockito.verify(databaseConnector).commit();
-        Mockito.verify(databaseConnector).close();
+        Mockito.verify(databaseConnector, Mockito.times(2)).commit();
+        Mockito.verify(databaseConnector, Mockito.times(2)).close();
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         Mockito.verify(databaseConnector, Mockito.times(5)).executeStatement(statements.capture());
         Assert.assertEquals(5, statements.getAllValues().size());
@@ -108,7 +108,7 @@ public class TestMagicCarpet {
         Assert.assertTrue(statements.getAllValues().contains("SELECT * FROM Other_Table"));
     }
 
-    @Test
+    @Test//THIS IS FAILING BECAUSE I NEED TO FORCE IT TO ERROR THEN ROLLBACK STILL
     public void testExecuteFailureDoesRollBack() {
         DatabaseConnector databaseConnector = Mockito.mock(DatabaseConnector.class);
         MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, false);

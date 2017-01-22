@@ -16,7 +16,7 @@
         {
           "taskName": "Alter table",
           "taskOrder": 1,
-          "filePath": "src\test\files\test.sql",
+          "filePath": "src\\test\\files\\test.sql",
           "type":"FileTask"
         }
       ]

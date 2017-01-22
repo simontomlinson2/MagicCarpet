@@ -69,7 +69,7 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
             if (p != path) {
                 val filePath = getJsonOrXmlPath(p)
                 if (Files.exists(filePath)) {
-                    buildChanges(filePath)
+                    changes = buildChanges(filePath)
                 } else if (Files.isDirectory(p)) {
                     //For Each File in directory. Sort it. Filter out the parent folder and create a FileTask from the file name and path
                     val tasks = Files.walk(p)
@@ -107,16 +107,16 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
             //Contains ChangeSet.xml or ChangeSet.json
             if (Files.exists(path)) {
                 logger.debug("Building changes for: {} ", path)
-                buildChanges(path)
+                this.changes = buildChanges(path)
             }
             else{
                 logger.debug("Adding tasks from directory structure at: {} ", path)
-                addTasksFromDirectory(this.path)
+                this.changes = addTasksFromDirectory(this.path)
             }
         }
         else{
             logger.debug("Adding tasks from directory structure at: {} ", this.path)
-            buildChanges(this.path)
+            this.changes = buildChanges(this.path)
         }
 
     }
@@ -125,15 +125,15 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
      * Build the changes into changes from the path
      * Detects if file is JSON or XML
      */
-    private fun buildChanges(path: Path){
+    private fun buildChanges(path: Path): List<Change>{
         FileInputStream(path.toString()).use { inputStream ->
             if (!Files.exists(path))
                 throw MagicCarpetException("File does not exist: $path")
             if(path.fileName.toString().endsWith(".json")){
-                this.changes = jsonMapper.readValue(inputStream)
+                return jsonMapper.readValue(inputStream)
             }
             else {
-                this.changes = xmlMapper.readValue(inputStream)
+                return xmlMapper.readValue(inputStream)
             }
         }
     }
@@ -161,7 +161,7 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, var devMode: Boolean
                                         try {
                                             t.performTask(this.databaseConnector)
                                             this.databaseConnector.insertChange(c.version, t.taskName, t.query)
-                                            this.logger.info("Database updates complete")
+                                            this.logger.info("Database update complete for task: {}", t.taskName)
                                             this.databaseConnector.commit()
                                         }
                                         catch (e: MagicCarpetException){

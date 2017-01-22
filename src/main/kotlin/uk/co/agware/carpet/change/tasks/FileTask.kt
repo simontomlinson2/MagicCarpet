@@ -32,7 +32,7 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
     @Override
     override fun performTask(databaseConnector: DatabaseConnector?) {
         val contents: String = this.query
-        val statements: List<String> = contents.split(this.delimiter.orEmpty())
+        val statements: List<String> = contents.split(this.delimiter)
         statements.forEach { s ->
             try {
                 databaseConnector!!.executeStatement(s.trim())
@@ -44,18 +44,18 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
 
     }
 
-    // TODO Tidy this method up, the execution paths are screwed up and the error handling is wrong
     fun getFileContents(): String {
         //check for file path
-        val path: Path = Paths.get(this.filePath)
-        if(Files.exists(path)){
-            return Files.readAllBytes(path).toString()
-        }
-        //try classpath file
-        else if(this.filePath.toLowerCase().startsWith("classpath:")){
+        if(this.filePath.toLowerCase().startsWith("classpath:")){
             val filename: String = this.filePath.replace("classpath:", "")
             val input : InputStream = javaClass.classLoader.getResourceAsStream(filename)
             return IOUtils.toString(input)
+        }
+        else {
+            val path: Path = Paths.get(this.filePath)
+            if(Files.exists(path)){
+                return String(Files.readAllBytes(path))
+            }
         }
         throw MagicCarpetException("Unable to find file " +this.filePath)
     }
