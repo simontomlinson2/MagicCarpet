@@ -1,11 +1,12 @@
 package uk.co.agware.carpet.database
 
 import java.sql.Connection
-/**
+/** // TODO More detail, space between imports and comment
  * Database connection interface
  *
  * Created by Simon on 29/12/2016.
  */
+// TODO Not entirely sure why you're putting * * around types, if you want to reference them you use @see
 interface DatabaseConnector {
 
     /**

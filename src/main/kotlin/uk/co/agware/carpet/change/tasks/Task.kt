@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import uk.co.agware.carpet.database.DatabaseConnector
 
 /**
+ * // TODO pointless comment
  * Task interface
  *
  * Created by Simon on 29/12/2016.
