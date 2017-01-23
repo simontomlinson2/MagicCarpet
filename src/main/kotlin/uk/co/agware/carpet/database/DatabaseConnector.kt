@@ -1,7 +1,5 @@
 package uk.co.agware.carpet.database
 
-import java.sql.Connection
-
 /**
  * Set up a database connection
  * Controls interaction with the database.
@@ -9,13 +7,6 @@ import java.sql.Connection
  * Created by Simon on 29/12/2016.
  */
 interface DatabaseConnector {
-
-    /**
-     * Set the connection to the database as Connection
-     * @see java.sql.Connection
-     * @property connection
-     */
-    fun setConnection(connection: Connection)
 
     /**
      * Commit Changes to the database

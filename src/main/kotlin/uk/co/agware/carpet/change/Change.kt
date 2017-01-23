@@ -14,24 +14,28 @@ import uk.co.agware.carpet.change.tasks.Task
  * Created by Simon on 29/12/2016.
  */
 class Change @JsonCreator constructor(@JsonProperty("version") val version: String,
-                                      @JsonProperty("tasks") val tasks: List<Task>? ) : Comparable<Change> {
+                                      @JsonProperty("tasks") val tasks: List<Task> = listOf()) : Comparable<Change> {
 
     /**
-     * Build the version from a String
-     * @param version
+     * Build the version number by converting the string
+     * n.n.n to an integer value.
+     *
+     * For example 1.1.0 will become 1.1 and 1.1.1 would become 1.11 thus
+     * making 1.1.0 smaller than 1.1.1
      */
-    fun buildVersionValue(version: String): Double{
+    private fun buildVersionValue(version: String): Double{
         return version.split(".")
                 .map(String::toDouble)
                 .reduceIndexed { i, acc, next ->
-                    acc + next / Math.pow(10.0, i.toDouble())
+                    acc + (next / Math.pow(10.0, i.toDouble()))
                 }
     }
 
     /**
-     * Compare the versions of each change
-     * Converts the version string into a comparable number
-     * @param other Change to Compare with
+     * Compares the version strings of both Change objects by
+     * first converting them to decimals that represent their
+     * SemVer value.
+     * Will sort the values in ascending order
      */
     @Override
     override fun compareTo(other: Change): Int {
@@ -51,8 +55,9 @@ class Change @JsonCreator constructor(@JsonProperty("version") val version: Stri
         return this.version.hashCode()
     }
 
-    @Override
     override fun toString(): String {
-        return "Change{version='{$this.version}',\ntasks=${this.tasks}}"
+        return "Change(version='$version', tasks=$tasks)"
     }
+
+
 }

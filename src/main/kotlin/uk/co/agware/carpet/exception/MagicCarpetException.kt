@@ -1,9 +1,7 @@
 package uk.co.agware.carpet.exception;
-/**
- * Created by Simon on 29/12/2016.
- */
-class MagicCarpetException : RuntimeException {
 
-    constructor(message: String?, cause: Throwable) : super(message, cause){}
-    constructor(message: String?) : super(message){}
-}
+abstract class MagicCarpetException(message: String) : RuntimeException(message)
+
+class MagicCarpetDatabaseException(message: String): MagicCarpetException(message)
+
+class MagicCarpetParseException(message: String): MagicCarpetException(message)

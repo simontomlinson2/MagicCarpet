@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import org.apache.commons.io.IOUtils
 import uk.co.agware.carpet.database.DatabaseConnector
 import uk.co.agware.carpet.exception.MagicCarpetException
+import uk.co.agware.carpet.exception.MagicCarpetParseException
 import java.io.InputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -29,35 +30,37 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
     val delimiter = if (delimiter == null || "" == delimiter) ";" else delimiter
     override val query = getFileContents()
 
-    @Override
-    override fun performTask(databaseConnector: DatabaseConnector?) {
-        val contents: String = this.query
-        val statements: List<String> = contents.split(this.delimiter)
-        statements.forEach { s ->
-            try {
-                databaseConnector!!.executeStatement(s.trim())
-            }
-            catch (e: MagicCarpetException){
-                throw MagicCarpetException("Failed to execute statement: $s")
-            }
-        }
-
+    override fun performTask(databaseConnector: DatabaseConnector) {
+        val contents = this.query
+        val statements = contents.split(this.delimiter)
+        statements.forEach { s -> databaseConnector.executeStatement(s.trim()) }
     }
 
-    fun getFileContents(): String {
+    private fun getFileContents(): String {
         //check for file path
         if(this.filePath.toLowerCase().startsWith("classpath:")){
-            val filename: String = this.filePath.replace("classpath:", "")
-            val input : InputStream = javaClass.classLoader.getResourceAsStream(filename)
-            return IOUtils.toString(input)
+            val path = this.filePath.replace("classpath:", "")
+            return getClasspathContents(path)
         }
         else {
-            val path: Path = Paths.get(this.filePath)
-            if(Files.exists(path)){
-                return String(Files.readAllBytes(path))
-            }
+            return getPathContents(this.filePath)
         }
-        throw MagicCarpetException("Unable to find file " +this.filePath)
     }
 
+    /* Read the contents of a file on the classpath if it exists */
+    private fun getClasspathContents(path: String): String {
+        javaClass.classLoader.getResourceAsStream(path)?.let { input -> {
+            IOUtils.toString(input)
+        } }
+        throw MagicCarpetParseException("Unable to find file $path")
+    }
+
+    /* Return the contents of a file path if it exists */
+    private fun getPathContents(path: String): String {
+        val file = Paths.get(path)
+        if(Files.exists(file)){
+            return String(Files.readAllBytes(file))
+        }
+        throw MagicCarpetParseException("Unable to find file $file")
+    }
 }

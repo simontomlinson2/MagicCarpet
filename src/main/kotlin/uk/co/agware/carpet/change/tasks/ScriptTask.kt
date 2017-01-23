@@ -25,17 +25,8 @@ class ScriptTask @JsonCreator constructor(@JsonProperty("taskName") override var
     val inputList = this.script.split(this.delimiter)
     override val query = this.script
 
-    @Override
-    override fun performTask(databaseConnector: DatabaseConnector?) {
-        this.inputList.forEach { s ->
-            try {
-                databaseConnector!!.executeStatement(s.trim())
-            }
-            catch (e: MagicCarpetException){
-                throw MagicCarpetException("Failed to execute statement: $s")
-            }
-        }
-
+    override fun performTask(databaseConnector: DatabaseConnector) {
+        this.inputList.forEach { s -> databaseConnector.executeStatement(s.trim()) }
     }
 
 }

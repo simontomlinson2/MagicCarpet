@@ -22,7 +22,7 @@ interface Task : Comparable<Task> {
      * Execute the task on the database
      * @param databaseConnector the connection to the database
      */
-    fun performTask(databaseConnector: DatabaseConnector?)
+    fun performTask(databaseConnector: DatabaseConnector)
 
 
     @Override
