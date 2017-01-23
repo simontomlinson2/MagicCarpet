@@ -18,33 +18,32 @@ public class TestScriptTask {
     @Before
     public void buildMocks(){
         databaseConnector = Mockito.mock(DatabaseConnector.class);
-        Mockito.when(databaseConnector.executeStatement(Mockito.anyString())).thenReturn(true);
     }
 
     @Test
     public void testSimpleConstructor(){
-        ScriptTask task = new ScriptTask(databaseConnector, "Task 1", 1, "SELECT * FROM Table", ";");
+        ScriptTask task = new ScriptTask("Task 1", 1, "SELECT * FROM Table", ";");
         Assert.assertEquals("Task 1", task.getTaskName());
         Assert.assertEquals(1, task.getTaskOrder());
-        Assert.assertTrue(task.performTask());
+        task.performTask(databaseConnector);
         Mockito.verify(databaseConnector, Mockito.times(1)).executeStatement("SELECT * FROM Table");
     }
 
     @Test
     public void testSimpleConstructorNoDelimiter(){
-        ScriptTask task = new ScriptTask(databaseConnector, "Task 1", 1, "SELECT * FROM Table", "");
+        ScriptTask task = new ScriptTask("Task 1", 1, "SELECT * FROM Table", "");
         Assert.assertEquals("Task 1", task.getTaskName());
         Assert.assertEquals(1, task.getTaskOrder());
-        Assert.assertTrue(task.performTask());
+        task.performTask(databaseConnector);
         Mockito.verify(databaseConnector, Mockito.times(1)).executeStatement("SELECT * FROM Table");
     }
 
     @Test
     public void testSimpleConstructorNullDelimiter(){
-        ScriptTask task = new ScriptTask(databaseConnector, "Task 1", 1, "SELECT * FROM Table", null);
+        ScriptTask task = new ScriptTask("Task 1", 1, "SELECT * FROM Table", null);
         Assert.assertEquals("Task 1", task.getTaskName());
         Assert.assertEquals(1, task.getTaskOrder());
-        Assert.assertTrue(task.performTask());
+        task.performTask(databaseConnector);
         Mockito.verify(databaseConnector, Mockito.times(1)).executeStatement("SELECT * FROM Table");
     }
 
@@ -53,10 +52,10 @@ public class TestScriptTask {
         StringBuilder script = new StringBuilder("SELECT * FROM Table;");
         script.append("SELECT * FROM another_table;");
         script.append("DELETE FROM TABLE");
-        ScriptTask task = new ScriptTask(databaseConnector, "Task 1", 1, script.toString(), null);
+        ScriptTask task = new ScriptTask("Task 1", 1, script.toString(), null);
         Assert.assertEquals("Task 1", task.getTaskName());
         Assert.assertEquals(1, task.getTaskOrder());
-        Assert.assertTrue(task.performTask());
+        task.performTask(databaseConnector);
         ArgumentCaptor<String> statements = ArgumentCaptor.forClass(String.class);
         Mockito.verify(databaseConnector, Mockito.times(3)).executeStatement(statements.capture());
         Assert.assertEquals(3, statements.getAllValues().size());
