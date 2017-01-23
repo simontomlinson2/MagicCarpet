@@ -108,9 +108,10 @@ public class TestMagicCarpet {
         Assert.assertTrue(statements.getAllValues().contains("SELECT * FROM Other_Table"));
     }
 
-    @Test//THIS IS FAILING BECAUSE I NEED TO FORCE IT TO ERROR THEN ROLLBACK STILL
+    @Test
     public void testExecuteFailureDoesRollBack() {
         DatabaseConnector databaseConnector = Mockito.mock(DatabaseConnector.class);
+        Mockito.doThrow(new MagicCarpetException("Could not execute statement")).when(databaseConnector).executeStatement(Mockito.anyString());
         MagicCarpet magicCarpet = new MagicCarpet(databaseConnector, false);
 
         Exception e = null; // Need to catch the exception to make sure it was thrown but also that the methods were called on the databaseConnector
