@@ -9,15 +9,16 @@ import org.slf4j.LoggerFactory
 import uk.co.agware.carpet.change.Change
 import uk.co.agware.carpet.change.tasks.FileTask
 import uk.co.agware.carpet.database.DatabaseConnector
+import uk.co.agware.carpet.database.use
 import uk.co.agware.carpet.exception.MagicCarpetDatabaseException
 import uk.co.agware.carpet.exception.MagicCarpetException
 import uk.co.agware.carpet.exception.MagicCarpetParseException
-import java.io.ByteArrayInputStream
-import java.io.FileInputStream
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.regex.Pattern
+import java.util.stream.Stream
 
 /**
  * Executes a set of changes on a database from a specified change set.
@@ -37,31 +38,17 @@ import java.nio.file.Paths
  */
 // TODO Needs debug level logging in places it makes sense to have it so that it is easier to see whats going on
 // TODO for someone with this library in their application if they need to actually do some debugging
-class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean = false, basePath: Path?)   {
+
+// TODO Should ideally filter the directory contents by .sql when checking for the task files
+class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean = false, basePath: Path?) {
 
     private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
 
     var changes: List<Change> = listOf()
     val createTable = true
 
-    val path: Path
-
-    /* Sets the base path to either the supplied value or searches for a ChangeSet.xml or ChangeSet.json */
-    // TODO Messy...
-    init {
-      if(basePath != null) {
-          path = basePath
-      }
-      else {
-          val xml = javaClass.classLoader.getResource("ChangeSet.xml")
-            ?.let { res -> Paths.get(res.toURI()) }
-
-          val json = javaClass.classLoader.getResource("ChangeSet.json")
-            ?.let { res -> Paths.get(res.toURI()) }
-
-          path = xml ?: json ?: throw MagicCarpetParseException("Unable to locate ChangeSet file in the classpath root")
-      }
-    }
+    // Sets the base path to either the supplied value or searches for a ChangeSet.xml or ChangeSet.json
+    val path = basePath ?: getJsonOrXmlPath(Paths.get("."))
 
     private val jsonMapper = ObjectMapper().registerModule(KotlinModule())
     private val xmlMapper = XmlMapper()
@@ -84,74 +71,94 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean
             throw MagicCarpetParseException("Unable to find file at ${this.path}")
         }
 
-        val path = getJsonOrXmlPath(this.path)
+        // If the path is a directory then we check for a ChangeSet file
+        if(Files.isDirectory(this.path)) {
 
-        if(Files.isDirectory(this.path)){
-            //Contains ChangeSet.xml or ChangeSet.json
+            // Try and find the file
+            val path = getJsonOrXmlPath(this.path)
+            // If there is a file then use that
             if (Files.exists(path)) {
-                logger.debug("Building changes for: {} ", path)
+                logger.debug("Building changes from {} ", path)
                 this.changes = buildChanges(path)
             }
-            else {
+            else { // Otherwise use this file as the base directory to search for files and folders
                 logger.debug("Adding tasks from directory structure at: {} ", path)
                 this.changes = addTasksFromDirectory(this.path)
             }
         }
-        else {
-            logger.debug("Adding tasks from directory structure at: {} ", this.path)
+        else { // Otherwise we build from the file
+            logger.debug("Adding tasks from {} ", this.path)
             this.changes = buildChanges(this.path)
         }
     }
 
     /*
-     * Get the Changes from a file structure
-     * If ChangeSet.json or ChangeSet.xml exist in the folder the changes are added to *changes*
-     * Else each directory is walked and files added to change list using the directory name as the task name.
+     * Iterates through all folders within the supplied path and builds up a set
+     * of changes to be applied. It will only check one level deep to avoid checking
+     * the same file multiple times and building an incorrect graph
      */
     private fun addTasksFromDirectory(path: Path): List<Change> {
-        var changes: List<Change> = listOf()
-        Files.walk(path).forEach {
-            p ->
-            if (p != path) {
-                val filePath = getJsonOrXmlPath(p)
-                if (Files.exists(filePath)) {
-                    changes = buildChanges(filePath)
-                } else if (Files.isDirectory(p)) {
-                    //For Each File in directory. Sort it. Filter out the parent folder and create a FileTask from the file name and path
-                    val tasks = Files.walk(p)
-                      .sorted()
-                      .filter { f -> f != p }
-                      .toArray()
-                      .asList()
-                      .map { it as Path }
-                      .mapIndexed { i, f ->
-                          val name = f.fileName.toString().split(Regex("-|\\."))[1]
-                          logger.debug("Creating Task for file: {}", name)
-                          return@mapIndexed FileTask(name, i, f.toString(), null)
-                      }
-                    logger.debug("Creating change for : {}", p.fileName.toString())
-                    changes += Change(p.fileName.toString(), tasks)
-                }
-            }
-        }
-        return changes
+        val directoryNameCheck = Regex("""\d\.\d(\.\d)+""")
+        return Files.walk(path, 1)
+          .toList()
+          .filter { directoryNameCheck.matches(it.fileName.toString()) } // Get only paths matching x.x.x
+          .flatMap { p -> pathToChanges(p) }
     }
 
     /*
-     * Build the changes into changes from the path
-     * Detects if file is JSON or XML
+     * Checks the current path for a ChangeSet file, if it exists then it is used to build up the
+     * changes from this folder, otherwise the folder itself will be used as the base and its contents
+     * will become the tasks
      */
+    private fun pathToChanges(path: Path): List<Change> {
+        val dirName = path.fileName.toString()
+        val file = getJsonOrXmlPath(path)
+
+        if(Files.exists(file)) {
+            return buildChanges(file)
+        }
+
+        val tasks = pathToTasks(path)
+        val change = Change(dirName, tasks)
+        return listOf(change)
+    }
+
+    /* Reads all files in the directory and creates a task list from them */
+    private fun pathToTasks(path: Path): List<FileTask> {
+        // Will match three groups, the first being potentially a number, the second being potentially
+        // some set of separating characters and the third being everything else, this is for matching
+        // file names such as "12 - Create new Table" and "1.Add some things" and extracting both the
+        // number and the name without worrying if the number and/or separating characters do not exist
+        // The only edge case on this is going to be if someone starts a Task name with a number.
+        val filenameMatch = Regex("""(\d?)([ -:.]?)(.?)""").toPattern()
+
+        return Files.walk(path)
+          .toList()
+          .map { p -> createFileTask(p, filenameMatch) }
+    }
+
+    /* Creates a FileTask from a given path */
+    private fun createFileTask(filePath: Path, pattern: Pattern): FileTask {
+        val fileName = filePath.fileName.toString()
+        val matcher = pattern.matcher(fileName)
+        matcher.find()
+        val order = matcher.group(1) ?: "1000000" // If no number is supplied then set a high number
+        val taskName = matcher.group(3)
+
+        return FileTask(taskName, order.toInt(), filePath.toString())
+    }
+
+    /* Converts the file at the supplied path into a list of Changes */
     private fun buildChanges(path: Path): List<Change> {
         if(!Files.exists(path)) throw MagicCarpetParseException("File does not exist: $path")
 
         try {
             val contents = Files.readAllBytes(path)
-            val inputStream = ByteArrayInputStream(contents)
 
             if (path.endsWith(".json")) {
-                return jsonMapper.readValue(inputStream)
+                return jsonMapper.readValue(contents)
             } else {
-                return xmlMapper.readValue(inputStream)
+                return xmlMapper.readValue(contents)
             }
         }
         catch (e: IOException) {
@@ -170,36 +177,51 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean
             this.logger.info("MagicCarpet set to Dev Mode, changes not being implemented")
             return
         }
-        this.databaseConnector.checkChangeSetTable(this.createTable)
-        if(!this.changes.isEmpty()) {
-            Sequence {  this.changes.iterator() }
-              .forEach { c ->
-                  Sequence { c.tasks.sorted().iterator() }
-                    .forEach { t ->
-                        if(!this.databaseConnector.changeExists(c.version, t.taskName, t.query)){
-                            this.logger.info("Applying Version {} Task {}", c.version, t.taskName)
-                            try {
-                                t.performTask(this.databaseConnector)
-                                this.databaseConnector.insertChange(c.version, t.taskName, t.query)
-                                this.logger.info("Database update complete for task: {}", t.taskName)
-                                this.databaseConnector.commit()
-                            }
-                            catch (e: MagicCarpetException){
-                                this.databaseConnector.rollBack()
-                                throw MagicCarpetDatabaseException("Error while inserting Task ${t.taskName}" +
-                                  " for Change Version ${c.version}," +
-                                  " see the log for additional details")
-                            }
-                            finally {
-                                this.databaseConnector.close()
-                            }
-                        }
-                        else {
-                            this.databaseConnector.updateChange(c.version, t.taskName, t.query)
-                        }
-                    } }
 
+        // Will close the database connector after completion
+        this.databaseConnector.use { connector ->
+            connector.checkChangeSetTable(this.createTable)
+
+            this.changes.sorted()
+              .forEach { change ->
+                  // Check if the change already exists
+                    // If so then check the Hash
+                    // If it doesn't exist then create it
+                    // If it does exist and doesn't match then throw an error, rollback the transaction
+
+                  // If the change doesn't exist then attempt to create it
+                  // If error then rollback the transaction and throw the error
+              }
+            connector.commit()
         }
+
+        // TODO This will all be deleted and there will be some changes to the DatabaseConnector
+        Sequence {  this.changes.iterator() }
+          .forEach { c ->
+              Sequence { c.tasks.sorted().iterator() }
+                .forEach { t ->
+                    if(!this.databaseConnector.changeExists(c.version, t.taskName, t.query)){
+                        this.logger.info("Applying Version {} Task {}", c.version, t.taskName)
+                        try {
+                            t.performTask(this.databaseConnector)
+                            this.databaseConnector.insertChange(c.version, t.taskName, t.query)
+                            this.logger.info("Database update complete for task: {}", t.taskName)
+                            this.databaseConnector.commit()
+                        }
+                        catch (e: MagicCarpetException){
+                            this.databaseConnector.rollBack()
+                            throw MagicCarpetDatabaseException("Error while inserting Task ${t.taskName}" +
+                              " for Change Version ${c.version}," +
+                              " see the log for additional details")
+                        }
+                        finally {
+                            this.databaseConnector.close()
+                        }
+                    }
+                    else {
+                        this.databaseConnector.updateChange(c.version, t.taskName, t.query)
+                    }
+                } }
     }
 
     /**
@@ -216,4 +238,9 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean
         parseChanges()
         executeChanges()
     }
+}
+
+/* I needed it a few times... */
+fun <T> Stream<T>.toList(): List<T> {
+    return Sequence { this.iterator() }.toList()
 }

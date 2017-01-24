@@ -19,9 +19,9 @@ import uk.co.agware.carpet.exception.MagicCarpetException
 class ScriptTask @JsonCreator constructor(@JsonProperty("taskName") override var taskName: String,
                                           @JsonProperty("taskOrder") override var taskOrder: Int,
                                           @JsonProperty("script") val script: String,
-                                          @JsonProperty("delimiter") delimiter: String?): Task {
+                                          @JsonProperty("delimiter") delimiter: String = ";"): Task {
 
-    val delimiter = if (delimiter == null || "" == delimiter) ";" else delimiter
+    val delimiter = if ("" == delimiter) ";" else delimiter
     val inputList = this.script.split(this.delimiter)
     override val query = this.script
 

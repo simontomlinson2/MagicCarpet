@@ -25,9 +25,9 @@ import java.nio.file.Paths
 class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var taskName: String,
                                         @JsonProperty("taskOrder") override var taskOrder: Int,
                                         @JsonProperty("filePath") val filePath: String,
-                                        @JsonProperty("delimiter") delimiter: String?) : Task {
+                                        @JsonProperty("delimiter") delimiter: String = ";") : Task {
 
-    val delimiter = if (delimiter == null || "" == delimiter) ";" else delimiter
+    val delimiter = if ("" == delimiter) ";" else delimiter
     override val query = getFileContents()
 
     override fun performTask(databaseConnector: DatabaseConnector) {

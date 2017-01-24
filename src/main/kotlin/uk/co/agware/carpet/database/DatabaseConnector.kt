@@ -6,7 +6,7 @@ package uk.co.agware.carpet.database
  *
  * Created by Simon on 29/12/2016.
  */
-interface DatabaseConnector {
+interface DatabaseConnector: AutoCloseable {
 
     /**
      * Commit Changes to the database
@@ -18,7 +18,7 @@ interface DatabaseConnector {
      * close the connection to the database
      * @return Boolean
      */
-    fun close()
+    override fun close()
 
     /**
      * Insert a change into the database changes table
