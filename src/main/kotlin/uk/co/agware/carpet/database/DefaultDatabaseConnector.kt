@@ -3,6 +3,7 @@ package uk.co.agware.carpet.database
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import uk.co.agware.carpet.exception.MagicCarpetDatabaseException
+import uk.co.agware.carpet.exception.MagicCarpetParseException
 import java.math.BigInteger
 import java.security.MessageDigest
 import java.sql.Connection
@@ -39,7 +40,6 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
         }
         catch (e: SQLException) {
             throw MagicCarpetDatabaseException("Unable to commit changes to database. ${e.message}")
-
         }
     }
 
@@ -55,29 +55,29 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
     override fun executeStatement(sql: String){
         try {
             val statement = this.connection.createStatement()
-            statement.use { stmt -> {
+            statement.use { stmt ->
                 this.logger.info("Executing statement: {}", sql)
                 stmt.execute(sql)
-            } }
+            }
         }
         catch (e: SQLException) {
             throw MagicCarpetDatabaseException("Could not execute statement: $sql. ${e.message}")
         }
     }
 
-    override fun insertChange(version: String, taskName: String, query: String){
+    override fun recordTask(version: String, taskName: String, query: String){
         val sql: String = """INSERT INTO $TABLE_NAME
                              ($VERSION_COLUMN, $TASK_COLUMN, $DATE_COLUMN, $HASH_COLUMN)
                              VALUES (?, ?, ?, ?)"""
         try {
             val statement = this.connection.prepareStatement(sql)
-            statement.use { stmt -> {
+            statement.use { stmt ->
                 stmt.setString(1, version)
                 stmt.setString(2, taskName)
                 stmt.setInt(3, query.hashCode())
                 stmt.setDate(4, Date(System.currentTimeMillis()))
                 stmt.execute()
-            } }
+            }
         }
         catch (e: SQLException) {
             throw MagicCarpetDatabaseException("Could not insert task: $taskName for change: $version. ${e.message}")
@@ -101,13 +101,12 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
     /* Create the ChangeSet table in its original form, the "checkTableStructure" function will perform additional changes */
     private fun createChangeSetTable() {
         try {
-            val statement = this.connection.createStatement()
             val createTableStatement = """CREATE TABLE $TABLE_NAME (
                                                          $VERSION_COLUMN VARCHAR(255),
                                                          $TASK_COLUMN VARCHAR(255),
                                                          $DATE_COLUMN DATE
                                                       )"""
-            statement.executeUpdate(createTableStatement)
+            executeStatement(createTableStatement)
             commit()
         }
         catch (e: SQLException) {
@@ -125,21 +124,59 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
     private fun checkHashColumn(metadata: DatabaseMetaData) {
         try {
             val result = metadata.getColumns(null, null, TABLE_NAME, HASH_COLUMN)
-            result.use { rs -> {
-                if(!rs.next()){
-                    val statement = this.connection.createStatement()
-                    val createTableStatement = "ALTER TABLE $TABLE_NAME ADD COLUMN $HASH_COLUMN VARCHAR(64)"
-                    statement.executeUpdate(createTableStatement)
+            result.use { rs ->
+                if(!rs.next()) {
+                    executeStatement("ALTER TABLE $TABLE_NAME ADD COLUMN $HASH_COLUMN VARCHAR(64)")
                     commit()
                 }
-            } }
+            }
         }
         catch (e: SQLException) {
             throw MagicCarpetDatabaseException("Could not alter table: $TABLE_NAME with Column: $HASH_COLUMN. ${e.message}")
         }
     }
 
-    override fun changeExists(version: String, taskName: String, query: String): Boolean {
+    /**
+     * Check if the supplied version exists
+     */
+    override fun versionExists(version: String): Boolean {
+        val sql = """"SELECT * FROM $TABLE_NAME
+                      WHERE $VERSION_COLUMN = ?"""
+        try {
+            val statement = this.connection.prepareStatement(sql)
+            return statement.use { stmt ->
+                stmt.setString(1, version)
+                stmt.executeQuery().next()
+            }
+        }
+        catch (e: SQLException) {
+            throw MagicCarpetDatabaseException("Could not execute statement: $sql. ${e.message}")
+        }
+    }
+
+    /**
+     * Checks whether a change has been previously applied
+     */
+    override fun taskExists(version: String, taskName: String): Boolean {
+        val select = """SELECT * FROM $TABLE_NAME
+                        WHERE $VERSION_COLUMN = ?
+                            AND $TASK_COLUMN = ?
+                     """
+        try {
+            val statement = this.connection.prepareStatement(select)
+            return statement.use { stmt ->
+                stmt.setString(1, version)
+                stmt.setString(2, taskName)
+
+                stmt.executeQuery().next()
+            }
+        }
+        catch (e: SQLException) {
+            throw MagicCarpetDatabaseException("Could not execute statement: $select. ${e.message}")
+        }
+    }
+
+    override fun taskHashMatches(version: String, taskName: String, query: String): Boolean {
         val select = """SELECT * FROM $TABLE_NAME
                         WHERE $VERSION_COLUMN = ?
                             AND $TASK_COLUMN = ?
@@ -147,20 +184,31 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
                      """
         try {
             val statement = this.connection.prepareStatement(select)
-            return statement.use { stmt -> run {
+            statement.use { stmt ->
                 stmt.setString(1, version)
                 stmt.setString(2, taskName)
-                stmt.setString(3, hash(query))
+                stmt.setString(3, query.toMD5())
 
-                stmt.executeQuery().next()
-            } }
+                val result = stmt.executeQuery()
+                result.use { rs ->
+
+                    // If there is no hash then we return false
+                    val storedHash = rs.getString(HASH_COLUMN) ?: return false
+
+                    // Check if the hashes match
+                    if(storedHash == query.toMD5()) {
+                        return true
+                    }
+                    throw MagicCarpetParseException("Stored Hash and calculated hash for $version $taskName do not match")
+                }
+            }
         }
         catch (e: SQLException) {
             throw MagicCarpetDatabaseException("Could not execute statement: $select. ${e.message}")
         }
     }
 
-    override fun updateChange(version: String, taskName: String, query: String) {
+    override fun updateTaskHash(version: String, taskName: String, query: String) {
         //Update the row using version and task name where query is null
         val select = """UPDATE $TABLE_NAME
                         SET $HASH_COLUMN = ?
@@ -170,13 +218,13 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
                      """
         try {
             val statement = this.connection.prepareStatement(select)
-            statement.use { stmt -> {
-                stmt.setString(1, hash(query))
+            statement.use { stmt ->
+                stmt.setString(1, query.toMD5())
                 stmt.setString(2, version)
                 stmt.setString(3, taskName)
                 stmt.executeQuery()
                 commit()
-            } }
+            }
         }
         catch (e: SQLException) {
             throw MagicCarpetDatabaseException("Could not execute statement: $select. ${e.message}")
@@ -190,15 +238,6 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
         catch (e: SQLException) {
             throw MagicCarpetDatabaseException("Could not roll back changes. ${e.message}")
         }
-    }
-
-    /* Create an MD5 Hash of the provided String */
-    private fun hash(str: String): String {
-        val md5 = MessageDigest.getInstance("MD5")
-        md5.reset()
-        md5.update(str.toByteArray())
-        val digest = md5.digest()
-        return BigInteger(1, digest).toString(16)
     }
 }
 
@@ -220,4 +259,13 @@ inline fun <T: AutoCloseable, R> T.use(block: (closable: T) -> R): R {
             this.close()
         }
     }
+}
+
+/* Convert a String to an MD5 Hash */
+fun String.toMD5(): String {
+    val md5 = MessageDigest.getInstance("MD5")
+    md5.reset()
+    md5.update(this.toByteArray())
+    val digest = md5.digest()
+    return BigInteger(1, digest).toString(16)
 }

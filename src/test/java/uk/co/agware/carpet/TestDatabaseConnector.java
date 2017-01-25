@@ -25,7 +25,7 @@ public class TestDatabaseConnector {
 
     @Before
     public void buildMocks() throws SQLException {
-        databaseConnector = new DefaultDatabaseConnector();
+        databaseConnector = new DefaultDatabaseConnector(connection);
         connection = Mockito.mock(Connection.class);
         statement = Mockito.mock(Statement.class);
         preparedStatement = Mockito.mock(PreparedStatement.class);
@@ -33,8 +33,6 @@ public class TestDatabaseConnector {
         Mockito.when(connection.prepareStatement(Mockito.anyString())).thenReturn(preparedStatement);
         Mockito.when(preparedStatement.execute()).thenReturn(true);
         Mockito.when(statement.execute(Mockito.anyString())).thenReturn(true);
-
-        databaseConnector.setConnection(connection);
     }
 
     @Test
@@ -57,7 +55,7 @@ public class TestDatabaseConnector {
 
     @Test
     public void testInsertChange() throws SQLException {
-        databaseConnector.insertChange("1.0.0", "Create DB", "SELECT * FROM Table");
+        databaseConnector.recordTask("1.0.0", "Create DB", "SELECT * FROM Table");
         ArgumentCaptor<String> statement = ArgumentCaptor.forClass(String.class);
         Mockito.verify(connection).prepareStatement(statement.capture());
         Mockito.verify(preparedStatement).execute();
@@ -99,7 +97,7 @@ public class TestDatabaseConnector {
     @Test
     public void checkChangeDoesntExist() throws SQLException {
         Mockito.when(preparedStatement.executeQuery()).thenReturn(new ResultsSetStub(false));
-        Assert.assertFalse(databaseConnector.changeExists("1.0.0", "Create DB", "SELECT * FROM Table"));
+        Assert.assertFalse(databaseConnector.taskExists("1.0.0", "Create DB"));
         String expectedSql = "SELECT * FROM change_set WHERE version = ? AND task = ? AND (query_hash = ? OR query_hash IS NULL)";
         Mockito.verify(connection).prepareStatement(expectedSql);
         Mockito.verify(preparedStatement).setString(1, "1.0.0");
@@ -110,7 +108,7 @@ public class TestDatabaseConnector {
     @Test
     public void checkChangeExists() throws SQLException {
         Mockito.when(preparedStatement.executeQuery()).thenReturn(new ResultsSetStub(true));
-        Assert.assertTrue(databaseConnector.changeExists("1.0.0", "Create DB", "Select * FROM Table"));
+        Assert.assertTrue(databaseConnector.taskExists("1.0.0", "Create DB"));
     }
 
     @Test

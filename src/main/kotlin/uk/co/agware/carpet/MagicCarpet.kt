@@ -8,6 +8,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import uk.co.agware.carpet.change.Change
 import uk.co.agware.carpet.change.tasks.FileTask
+import uk.co.agware.carpet.change.tasks.Task
 import uk.co.agware.carpet.database.DatabaseConnector
 import uk.co.agware.carpet.database.use
 import uk.co.agware.carpet.exception.MagicCarpetDatabaseException
@@ -40,7 +41,7 @@ import java.util.stream.Stream
 // TODO for someone with this library in their application if they need to actually do some debugging
 
 // TODO Should ideally filter the directory contents by .sql when checking for the task files
-class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean = false, basePath: Path?) {
+class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode: Boolean = false, basePath: Path? = null) {
 
     private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
 
@@ -56,7 +57,11 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean
     /* Returns the JSON or XML file at a given Path */
     private fun getJsonOrXmlPath(originalPath: Path) : Path {
         val path = originalPath.resolve("ChangeSet.json")
-        return if(Files.exists(path)) path else originalPath.resolve("ChangeSet.xml")
+
+        return when (Files.exists(path)) {
+            true -> path
+            else -> originalPath.resolve("ChangeSet.xml")
+        }
     }
 
     /**
@@ -71,24 +76,18 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean
             throw MagicCarpetParseException("Unable to find file at ${this.path}")
         }
 
-        // If the path is a directory then we check for a ChangeSet file
-        if(Files.isDirectory(this.path)) {
-
-            // Try and find the file
-            val path = getJsonOrXmlPath(this.path)
-            // If there is a file then use that
-            if (Files.exists(path)) {
-                logger.debug("Building changes from {} ", path)
-                this.changes = buildChanges(path)
-            }
-            else { // Otherwise use this file as the base directory to search for files and folders
-                logger.debug("Adding tasks from directory structure at: {} ", path)
-                this.changes = addTasksFromDirectory(this.path)
-            }
+        this.changes = when (Files.isDirectory(this.path)) {
+            true -> fromDirectoryRoot()
+            else -> buildChanges(this.path)
         }
-        else { // Otherwise we build from the file
-            logger.debug("Adding tasks from {} ", this.path)
-            this.changes = buildChanges(this.path)
+    }
+
+    private fun fromDirectoryRoot(): List<Change> {
+        val path = getJsonOrXmlPath(this.path)
+
+        return when (Files.exists(path)) {
+            true -> buildChanges(path)
+            else -> addTasksFromDirectory(this.path)
         }
     }
 
@@ -155,15 +154,16 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean
         try {
             val contents = Files.readAllBytes(path)
 
-            if (path.endsWith(".json")) {
-                return jsonMapper.readValue(contents)
-            } else {
-                return xmlMapper.readValue(contents)
+            return when (path.endsWith(".json")) {
+                true -> jsonMapper.readValue(contents)
+                else -> xmlMapper.readValue(contents)
             }
         }
         catch (e: IOException) {
             throw MagicCarpetParseException("Unable to read file at $path. ${e.message}")
         }
+
+
     }
 
     /**
@@ -184,44 +184,47 @@ class MagicCarpet(val databaseConnector: DatabaseConnector, val devMode: Boolean
 
             this.changes.sorted()
               .forEach { change ->
-                  // Check if the change already exists
-                    // If so then check the Hash
-                    // If it doesn't exist then create it
-                    // If it does exist and doesn't match then throw an error, rollback the transaction
-
-                  // If the change doesn't exist then attempt to create it
-                  // If error then rollback the transaction and throw the error
+                  when (connector.versionExists(change.version)) {
+                      true -> this.validateExistingChange(change, connector)
+                      else -> change.tasks.forEach { task -> runTask(change.version, task, connector) }
+                  }
               }
             connector.commit()
         }
+    }
 
-        // TODO This will all be deleted and there will be some changes to the DatabaseConnector
-        Sequence {  this.changes.iterator() }
-          .forEach { c ->
-              Sequence { c.tasks.sorted().iterator() }
-                .forEach { t ->
-                    if(!this.databaseConnector.changeExists(c.version, t.taskName, t.query)){
-                        this.logger.info("Applying Version {} Task {}", c.version, t.taskName)
-                        try {
-                            t.performTask(this.databaseConnector)
-                            this.databaseConnector.insertChange(c.version, t.taskName, t.query)
-                            this.logger.info("Database update complete for task: {}", t.taskName)
-                            this.databaseConnector.commit()
-                        }
-                        catch (e: MagicCarpetException){
-                            this.databaseConnector.rollBack()
-                            throw MagicCarpetDatabaseException("Error while inserting Task ${t.taskName}" +
-                              " for Change Version ${c.version}," +
-                              " see the log for additional details")
-                        }
-                        finally {
-                            this.databaseConnector.close()
-                        }
-                    }
-                    else {
-                        this.databaseConnector.updateChange(c.version, t.taskName, t.query)
-                    }
-                } }
+    /*
+     * Checks the hashes of all the tasks that currently exist within the database to make sure the hashes have not
+     * been altered since they were applied
+     */
+    private fun validateExistingChange(change: Change, connector: DatabaseConnector) {
+        change.tasks.sorted()
+          .forEach { task ->
+              when (connector.taskExists(change.version, task.taskName)) {
+                  true -> validateTaskHash(change.version, task, connector)
+                  else  -> runTask(change.version, task, connector)
+              }
+          }
+    }
+
+    private fun validateTaskHash(version: String, task: Task, connector: DatabaseConnector) {
+        if(!connector.taskHashMatches(version, task.taskName, task.query)) {
+            connector.updateTaskHash(version, task.taskName, task.query)
+        }
+    }
+
+    /*
+     * Runs a Task and then records the task in the database, will catch and rethrow any exceptions by adding extra
+      * information onto the exception message.
+     */
+    private fun runTask(version: String, task: Task, connector: DatabaseConnector) {
+        try {
+            task.performTask(connector)
+            connector.recordTask(version, task.taskName, task.query)
+        }
+        catch (e: Exception) {
+            throw MagicCarpetDatabaseException("Error running task $version ${task.taskName}. ${e.message}")
+        }
     }
 
     /**
