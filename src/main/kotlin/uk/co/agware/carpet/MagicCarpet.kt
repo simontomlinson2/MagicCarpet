@@ -162,8 +162,6 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
         catch (e: IOException) {
             throw MagicCarpetParseException("Unable to read file at $path. ${e.message}")
         }
-
-
     }
 
     /**
@@ -182,13 +180,17 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
         this.databaseConnector.use { connector ->
             connector.checkChangeSetTable(this.createTable)
 
-            this.changes.sorted()
-              .forEach { change ->
-                  when (connector.versionExists(change.version)) {
-                      true -> this.validateExistingChange(change, connector)
-                      else -> change.tasks.forEach { task -> runTask(change.version, task, connector) }
+            try {
+                this.changes.sorted()
+                  .forEach { change ->
+                      when (connector.versionExists(change.version)) {
+                          true -> this.validateExistingChange(change, connector)
+                          else -> change.tasks.forEach { task -> runTask(change.version, task, connector) }
+                      }
                   }
-              }
+            } catch (e: MagicCarpetException) {
+                connector.rollBack()
+            }
             connector.commit()
         }
     }

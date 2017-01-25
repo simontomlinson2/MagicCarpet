@@ -34,7 +34,7 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
         this.connection.autoCommit = false
     }
 
-    override fun commit(){
+    override fun commit() {
         try {
             this.connection.commit()
         }
@@ -43,7 +43,7 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
         }
     }
 
-    override fun close(){
+    override fun close() {
         try {
             this.connection.close()
         }
@@ -52,7 +52,7 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
         }
     }
 
-    override fun executeStatement(sql: String){
+    override fun executeStatement(sql: String) {
         try {
             val statement = this.connection.createStatement()
             statement.use { stmt ->
@@ -65,7 +65,7 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
         }
     }
 
-    override fun recordTask(version: String, taskName: String, query: String){
+    override fun recordTask(version: String, taskName: String, query: String) {
         val sql: String = """INSERT INTO $TABLE_NAME
                              ($VERSION_COLUMN, $TASK_COLUMN, $DATE_COLUMN, $HASH_COLUMN)
                              VALUES (?, ?, ?, ?)"""
@@ -98,7 +98,10 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
         }
     }
 
-    /* Create the ChangeSet table in its original form, the "checkTableStructure" function will perform additional changes */
+    /*
+     * Create the ChangeSet table in its original form, the "checkTableStructure"
+     * function will perform additional changes
+     */
     private fun createChangeSetTable() {
         try {
             val createTableStatement = """CREATE TABLE $TABLE_NAME (
@@ -115,7 +118,7 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
     }
 
     /* Checks the table for any columns that have been added since the original release */
-    private fun checkTableStructure(){
+    private fun checkTableStructure() {
         val dbm = this.connection.metaData
         checkHashColumn(dbm)
     }
