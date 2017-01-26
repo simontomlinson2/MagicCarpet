@@ -21,11 +21,11 @@ import java.sql.SQLException
 open class DefaultDatabaseConnector (private val connection: Connection) : DatabaseConnector {
 
     companion object {
-        private val TABLE_NAME = "change_set"
-        private val VERSION_COLUMN = "version"
-        private val TASK_COLUMN = "task"
-        private val DATE_COLUMN = "applied"
-        private val HASH_COLUMN = "hash"
+        protected val TABLE_NAME = "change_set"
+        protected val VERSION_COLUMN = "version"
+        protected val TASK_COLUMN = "task"
+        protected val DATE_COLUMN = "applied"
+        protected val HASH_COLUMN = "hash"
     }
 
     private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
@@ -102,7 +102,7 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
      * Create the ChangeSet table in its original form, the "checkTableStructure"
      * function will perform additional changes
      */
-    private fun createChangeSetTable() {
+    protected fun createChangeSetTable() {
         try {
             val createTableStatement = """CREATE TABLE $TABLE_NAME (
                                                          $VERSION_COLUMN VARCHAR(255),
@@ -118,13 +118,13 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
     }
 
     /* Checks the table for any columns that have been added since the original release */
-    private fun checkTableStructure() {
+    protected fun checkTableStructure() {
         val dbm = this.connection.metaData
         checkHashColumn(dbm)
     }
 
     /* Hash Column was added in 2.0.0 */
-    private fun checkHashColumn(metadata: DatabaseMetaData) {
+    protected fun checkHashColumn(metadata: DatabaseMetaData) {
         try {
             val result = metadata.getColumns(null, null, TABLE_NAME, HASH_COLUMN)
             result.use { rs ->

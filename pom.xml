@@ -14,7 +14,7 @@
         <mockito.version>1.10.19</mockito.version>
         <commons.io.version>2.4</commons.io.version>
         <logger.version>1.7.12</logger.version>
-        <kotlin.version>1.0.5-3</kotlin.version>
+        <kotlin.version>1.0.6</kotlin.version>
         <kotlin.dom.version>0.0.10</kotlin.dom.version>
         <jackson.dataformat.version>2.8.4</jackson.dataformat.version>
         <jackson.dataformat.xml.version>2.6.3</jackson.dataformat.xml.version>
@@ -25,7 +25,7 @@
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-runner</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.0-M3</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.spek</groupId>
@@ -86,13 +86,15 @@
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-test</artifactId>
+            <artifactId>kotlin-test-junit</artifactId>
             <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
+        <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
+        <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

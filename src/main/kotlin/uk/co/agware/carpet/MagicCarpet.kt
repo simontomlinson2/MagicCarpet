@@ -41,7 +41,7 @@ import java.util.stream.Stream
 // TODO for someone with this library in their application if they need to actually do some debugging
 
 // TODO Should ideally filter the directory contents by .sql when checking for the task files
-class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode: Boolean = false, basePath: Path? = null) {
+open class MagicCarpet(protected val databaseConnector: DatabaseConnector, val devMode: Boolean = false, basePath: Path? = null) {
 
     private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
 
@@ -49,13 +49,13 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
     val createTable = true
 
     // Sets the base path to either the supplied value or searches for a ChangeSet.xml or ChangeSet.json
-    val path = basePath ?: getJsonOrXmlPath(Paths.get("."))
+    protected val path = basePath ?: getJsonOrXmlPath(Paths.get("."))
 
-    private val jsonMapper = ObjectMapper().registerModule(KotlinModule())
-    private val xmlMapper = XmlMapper()
+    protected val jsonMapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule())
+    protected val xmlMapper = XmlMapper()
 
     /* Returns the JSON or XML file at a given Path */
-    private fun getJsonOrXmlPath(originalPath: Path) : Path {
+    protected fun getJsonOrXmlPath(originalPath: Path) : Path {
         val path = originalPath.resolve("ChangeSet.json")
 
         return when (Files.exists(path)) {
@@ -82,7 +82,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
         }
     }
 
-    private fun fromDirectoryRoot(): List<Change> {
+    protected fun fromDirectoryRoot(): List<Change> {
         val path = getJsonOrXmlPath(this.path)
 
         return when (Files.exists(path)) {
@@ -96,7 +96,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
      * of changes to be applied. It will only check one level deep to avoid checking
      * the same file multiple times and building an incorrect graph
      */
-    private fun addTasksFromDirectory(path: Path): List<Change> {
+    protected fun addTasksFromDirectory(path: Path): List<Change> {
         val directoryNameCheck = Regex("""\d\.\d(\.\d)+""")
         return Files.walk(path, 1)
           .toList()
@@ -109,7 +109,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
      * changes from this folder, otherwise the folder itself will be used as the base and its contents
      * will become the tasks
      */
-    private fun pathToChanges(path: Path): List<Change> {
+    protected fun pathToChanges(path: Path): List<Change> {
         val dirName = path.fileName.toString()
         val file = getJsonOrXmlPath(path)
 
@@ -123,7 +123,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
     }
 
     /* Reads all files in the directory and creates a task list from them */
-    private fun pathToTasks(path: Path): List<FileTask> {
+    protected fun pathToTasks(path: Path): List<FileTask> {
         // Will match three groups, the first being potentially a number, the second being potentially
         // some set of separating characters and the third being everything else, this is for matching
         // file names such as "12 - Create new Table" and "1.Add some things" and extracting both the
@@ -137,7 +137,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
     }
 
     /* Creates a FileTask from a given path */
-    private fun createFileTask(filePath: Path, pattern: Pattern): FileTask {
+    protected fun createFileTask(filePath: Path, pattern: Pattern): FileTask {
         val fileName = filePath.fileName.toString()
         val matcher = pattern.matcher(fileName)
         matcher.find()
@@ -148,7 +148,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
     }
 
     /* Converts the file at the supplied path into a list of Changes */
-    private fun buildChanges(path: Path): List<Change> {
+    protected fun buildChanges(path: Path): List<Change> {
         if(!Files.exists(path)) throw MagicCarpetParseException("File does not exist: $path")
 
         try {
@@ -188,7 +188,8 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
                           else -> change.tasks.forEach { task -> runTask(change.version, task, connector) }
                       }
                   }
-            } catch (e: MagicCarpetException) {
+            }
+            catch (e: MagicCarpetException) {
                 connector.rollBack()
             }
             connector.commit()
@@ -199,7 +200,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
      * Checks the hashes of all the tasks that currently exist within the database to make sure the hashes have not
      * been altered since they were applied
      */
-    private fun validateExistingChange(change: Change, connector: DatabaseConnector) {
+    protected fun validateExistingChange(change: Change, connector: DatabaseConnector) {
         change.tasks.sorted()
           .forEach { task ->
               when (connector.taskExists(change.version, task.taskName)) {
@@ -209,7 +210,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
           }
     }
 
-    private fun validateTaskHash(version: String, task: Task, connector: DatabaseConnector) {
+    protected fun validateTaskHash(version: String, task: Task, connector: DatabaseConnector) {
         if(!connector.taskHashMatches(version, task.taskName, task.query)) {
             connector.updateTaskHash(version, task.taskName, task.query)
         }
@@ -219,7 +220,7 @@ class MagicCarpet(private val databaseConnector: DatabaseConnector, val devMode:
      * Runs a Task and then records the task in the database, will catch and rethrow any exceptions by adding extra
       * information onto the exception message.
      */
-    private fun runTask(version: String, task: Task, connector: DatabaseConnector) {
+    protected fun runTask(version: String, task: Task, connector: DatabaseConnector) {
         try {
             task.performTask(connector)
             connector.recordTask(version, task.taskName, task.query)
