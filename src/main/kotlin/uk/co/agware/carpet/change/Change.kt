@@ -3,6 +3,7 @@ package uk.co.agware.carpet.change;
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
 import uk.co.agware.carpet.change.tasks.Task
+import uk.co.agware.carpet.exception.MagicCarpetParseException
 
 
 /**
@@ -15,6 +16,12 @@ import uk.co.agware.carpet.change.tasks.Task
  */
 open class Change @JsonCreator constructor(@JsonProperty("version") val version: String,
                                       @JsonProperty("tasks") val tasks: List<Task> = listOf()) : Comparable<Change> {
+
+    init {
+        if(Regex("d+(?:.d+)+").matches(this.version)){
+            throw MagicCarpetParseException("Incorrect version format ${this.version}")
+        }
+    }
 
     /**
      * Build the version number by converting the string

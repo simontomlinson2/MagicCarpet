@@ -10,7 +10,6 @@ import uk.co.agware.carpet.exception.MagicCarpetParseException
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
-import kotlin.test.expect
 
 @RunWith(JUnitPlatform::class)
 class TestChange: SubjectSpek<Change>({
@@ -37,6 +36,10 @@ class TestChange: SubjectSpek<Change>({
             assertFailsWith<MagicCarpetParseException> {
                 Change("1.d.0")
             }
+        }
+
+        it("should compare two changes using the version number") {
+            assertEquals(subject.compareTo(Change("1.1.1")), -1)
         }
     }
 
