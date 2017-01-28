@@ -4,11 +4,8 @@ import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
 import org.apache.commons.io.IOUtils
 import uk.co.agware.carpet.database.DatabaseConnector
-import uk.co.agware.carpet.exception.MagicCarpetException
 import uk.co.agware.carpet.exception.MagicCarpetParseException
-import java.io.InputStream
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
 
 /**
@@ -49,10 +46,13 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
 
     /* Read the contents of a file on the classpath if it exists */
     private fun getClasspathContents(path: String): String {
-        javaClass.classLoader.getResourceAsStream(path)?.let { input -> {
-            IOUtils.toString(input)
-        } }
-        throw MagicCarpetParseException("Unable to find file $path")
+        val input = javaClass.classLoader.getResourceAsStream(path)
+        return when(input != null) {
+            true -> IOUtils.toString(input)
+            else -> throw MagicCarpetParseException("Unable to find file $path")
+        }
+
+
     }
 
     /* Return the contents of a file path if it exists */
