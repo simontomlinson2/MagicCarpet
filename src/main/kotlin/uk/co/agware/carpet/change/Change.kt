@@ -2,6 +2,7 @@ package uk.co.agware.carpet.change;
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
+import uk.co.agware.carpet.MagicCarpet
 import uk.co.agware.carpet.change.tasks.Task
 import uk.co.agware.carpet.exception.MagicCarpetParseException
 
@@ -15,11 +16,11 @@ import uk.co.agware.carpet.exception.MagicCarpetParseException
  * Created by Simon on 29/12/2016.
  */
 open class Change @JsonCreator constructor(@JsonProperty("version") val version: String,
-                                      @JsonProperty("tasks") val tasks: List<Task> = listOf()) : Comparable<Change> {
+                                           @JsonProperty("tasks") val tasks: List<Task> = listOf()) : Comparable<Change> {
 
     init {
-        if(Regex("d+(?:.d+)+").matches(this.version)){
-            throw MagicCarpetParseException("Incorrect version format ${this.version}")
+        if(!MagicCarpet.VERSION_TEST.matches(version)) {
+            throw MagicCarpetParseException("Version $version does not match the SemVer pattern")
         }
     }
 
@@ -32,10 +33,10 @@ open class Change @JsonCreator constructor(@JsonProperty("version") val version:
      */
     protected fun buildVersionValue(version: String): Double{
         return version.split(".")
-                .map(String::toDouble)
-                .reduceIndexed { i, acc, next ->
-                    acc + (next / Math.pow(10.0, i.toDouble()))
-                }
+          .map(String::toDouble)
+          .reduceIndexed { i, acc, next ->
+              acc + (next / Math.pow(10.0, i.toDouble()))
+          }
     }
 
     /**

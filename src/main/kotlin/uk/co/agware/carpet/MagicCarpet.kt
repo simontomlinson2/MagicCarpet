@@ -41,7 +41,13 @@ import java.util.stream.Stream
 // TODO for someone with this library in their application if they need to actually do some debugging
 
 // TODO Should ideally filter the directory contents by .sql when checking for the task files
-open class MagicCarpet(protected val databaseConnector: DatabaseConnector, val devMode: Boolean = false, basePath: Path? = null) {
+open class MagicCarpet(protected val databaseConnector: DatabaseConnector,
+                       val devMode: Boolean = false,
+                       basePath: Path? = null) {
+
+    companion object {
+        val VERSION_TEST = Regex("""\d\.\d(\.\d)+""")
+    }
 
     private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
 
@@ -97,10 +103,9 @@ open class MagicCarpet(protected val databaseConnector: DatabaseConnector, val d
      * the same file multiple times and building an incorrect graph
      */
     protected fun addTasksFromDirectory(path: Path): List<Change> {
-        val directoryNameCheck = Regex("""\d\.\d(\.\d)+""")
         return Files.walk(path, 1)
           .toList()
-          .filter { directoryNameCheck.matches(it.fileName.toString()) } // Get only paths matching x.x.x
+          .filter { VERSION_TEST.matches(it.fileName.toString()) } // Get only paths matching x.x.x
           .flatMap { p -> pathToChanges(p) }
     }
 
