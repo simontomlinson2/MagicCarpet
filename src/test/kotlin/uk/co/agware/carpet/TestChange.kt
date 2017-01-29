@@ -41,6 +41,10 @@ class TestChange: SubjectSpek<Change>({
         it("should order changes using the version number") {
             assertEquals(subject.compareTo(Change("1.1.1")), -1)
         }
+
+        it("should generate a hashcode for the change version") {
+            assertEquals(subject.hashCode(), "1.0.0".hashCode())
+        }
     }
 
  })
