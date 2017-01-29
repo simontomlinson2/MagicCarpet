@@ -15,6 +15,8 @@ import java.sql.PreparedStatement
 import java.sql.Statement
 import kotlin.test.assertEquals
 
+//TODO Rollback, CheckHashMatches, UpdateHash
+
 @RunWith(JUnitPlatform::class)
 class TestDatabaseConnector: Spek({
 
@@ -28,10 +30,9 @@ class TestDatabaseConnector: Spek({
             on { createStatement() } doReturn statement
             on { prepareStatement(any()) } doReturn preparedStatement
         }
+        val subject = DefaultDatabaseConnector(connection)
         whenever(preparedStatement.execute()).thenReturn(true)
         whenever(statement.execute(any())).thenReturn(true)
-        val subject = DefaultDatabaseConnector(connection)
-
         on("executing changes") {
             subject.executeStatement("SELECT * FROM Table")
 
@@ -54,7 +55,7 @@ class TestDatabaseConnector: Spek({
             }
         }
 
-        on("Recording the task") {
+       on("Recording the task") {
             subject.recordTask("1.0.0", "Create DB", "SELECT * FROM Table")
             val expectedStatement = """INSERT INTO change_set
                              (version, task, applied, hash)
@@ -63,6 +64,7 @@ class TestDatabaseConnector: Spek({
 
             it("Should prepare the statement") {
                 verify(connection).prepareStatement(statementCaptor.capture())
+
             }
 
             it("Should execute the statement") {
@@ -85,23 +87,94 @@ class TestDatabaseConnector: Spek({
         }
     }
 
-
-    describe("A DefaultDatabaseConnection") {
+    describe("A DatabaseConnector Object"){
         val statement = mock<Statement>()
         val preparedStatement = mock<PreparedStatement>()
         val connection = mock<Connection> {
             on { createStatement() } doReturn statement
             on { prepareStatement(any()) } doReturn preparedStatement
         }
+        val subject = DefaultDatabaseConnector(connection)
         whenever(preparedStatement.execute()).thenReturn(true)
         whenever(statement.execute(any())).thenReturn(true)
+        whenever(preparedStatement.executeQuery()).thenReturn(ResultsSetStub(true))
+        on("Checking the version exists") {
+            val expectedStatement = """"SELECT * FROM change_set
+                      WHERE version = ?"""
+            val statementCaptor = argumentCaptor<String>()
+            val version = "1.0.0"
+            subject.versionExists(version)
+            it("Should prepare the statement") {
+                verify(connection).prepareStatement(statementCaptor.capture())
+                assertEquals(expectedStatement, statementCaptor.value)
+            }
+
+            it("Should record populate the statement with the version values") {
+
+                verify(preparedStatement).setString(1, version)
+            }
+
+            it("Should execute the statement") {
+                verify(preparedStatement).executeQuery()
+            }
+        }
+    }
+
+    describe("A DatabaseConnector Object"){
+        val statement = mock<Statement>()
+        val preparedStatement = mock<PreparedStatement>()
+        val connection = mock<Connection> {
+            on { createStatement() } doReturn statement
+            on { prepareStatement(any()) } doReturn preparedStatement
+        }
         val subject = DefaultDatabaseConnector(connection)
+        whenever(preparedStatement.execute()).thenReturn(true)
+        whenever(statement.execute(any())).thenReturn(true)
+        whenever(preparedStatement.executeQuery()).thenReturn(ResultsSetStub(true))
+        on("Checking the task exists") {
+            val expectedStatement =  """SELECT * FROM change_set
+                        WHERE version = ?
+                            AND task = ?
+                     """
+            val statementCaptor = argumentCaptor<String>()
+            val version = "1.0.0"
+            val taskName = "Task Name"
+            subject.taskExists(version, taskName)
+            it("Should prepare the statement") {
+                verify(connection).prepareStatement(statementCaptor.capture())
+                assertEquals(expectedStatement, statementCaptor.value)
+            }
+
+            it("Should record populate the statement with the version values") {
+                verify(preparedStatement).setString(1, version)
+            }
+
+            it("Should record populate the statement with the task name values") {
+                verify(preparedStatement).setString(2, taskName)
+            }
+
+            it("Should execute the statement") {
+                verify(preparedStatement).executeQuery()
+            }
+        }
+    }
+
+    describe("A DefaultDatabaseConnection with no change set table") {
+        val statement = mock<Statement>()
+        val preparedStatement = mock<PreparedStatement>()
         val metaData = mock<DatabaseMetaData>()
+        val connection = mock<Connection> {
+            on { createStatement() } doReturn statement
+            on { prepareStatement(any()) } doReturn preparedStatement
+        }
+        val subject = DefaultDatabaseConnector(connection)
+        whenever(preparedStatement.execute()).thenReturn(true)
+        whenever(statement.execute(any())).thenReturn(true)
         whenever(connection.metaData).thenReturn(metaData)
+        whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(false))
+        whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
 
         on("checking the existence of the change set table") {
-            whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(false))
-            whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
 
             subject.checkChangeSetTable(true)
 
@@ -127,23 +200,24 @@ class TestDatabaseConnector: Spek({
         }
     }
 
-    describe("A DefaultDatabaseConnection") {
+    describe("A DefaultDatabaseConnection with a change set table") {
         val statement = mock<Statement>()
         val preparedStatement = mock<PreparedStatement>()
         val connection = mock<Connection> {
             on { createStatement() } doReturn statement
             on { prepareStatement(any()) } doReturn preparedStatement
         }
-        whenever(preparedStatement.execute()).thenReturn(true)
-        whenever(statement.execute(any())).thenReturn(true)
         val subject = DefaultDatabaseConnector(connection)
         val metaData = mock<DatabaseMetaData>()
         whenever(connection.metaData).thenReturn(metaData)
+        whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(true))
+        whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
+        whenever(preparedStatement.execute()).thenReturn(true)
+        whenever(statement.execute(any())).thenReturn(true)
+
         on("checking the existence of the change set table that exists") {
 
-            whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(true))
-            whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
-            subject.checkChangeSetTable(true)
+              subject.checkChangeSetTable(true)
 
             it("should check the metadata for the tables existence") {
                 verify(metaData).getTables(null, null, "change_set", null)
@@ -161,24 +235,23 @@ class TestDatabaseConnector: Spek({
         }
     }
 
-    describe("A DefaultDatabaseConnection") {
+    describe("A DefaultDatabaseConnection with no hash column") {
         val statement = mock<Statement>()
         val preparedStatement = mock<PreparedStatement>()
+        val metaData = mock<DatabaseMetaData>()
         val connection = mock<Connection> {
             on { createStatement() } doReturn statement
             on { prepareStatement(any()) } doReturn preparedStatement
         }
+        val subject = DefaultDatabaseConnector(connection)
         whenever(preparedStatement.execute()).thenReturn(true)
         whenever(statement.execute(any())).thenReturn(true)
-        val subject = DefaultDatabaseConnector(connection)
-        val metaData = mock<DatabaseMetaData>()
         whenever(connection.metaData).thenReturn(metaData)
         whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(true))
-
+        whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(false))
 
         on("checking for the hash column that does not exist") {
-            whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(false))
-            subject.checkChangeSetTable(true)
+             subject.checkChangeSetTable(true)
 
             it("Should check for the hash columns existence in the table") {
                 verify(metaData).getColumns(null, null, "change_set", "hash")
@@ -197,7 +270,7 @@ class TestDatabaseConnector: Spek({
         }
     }
 
-    describe("A DefaultDatabaseConnection") {
+    describe("A DefaultDatabaseConnection with a hash column") {
         val statement = mock<Statement>()
         val preparedStatement = mock<PreparedStatement>()
         val connection = mock<Connection> {
@@ -210,10 +283,10 @@ class TestDatabaseConnector: Spek({
         val metaData = mock<DatabaseMetaData>()
         whenever(connection.metaData).thenReturn(metaData)
         whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(true))
+        whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
 
         on("checking for the hash column that exists") {
-            whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
-            subject.checkChangeSetTable(true)
+             subject.checkChangeSetTable(true)
             it("Should check for the hash columns existence in the table") {
                 verify(metaData).getColumns(null, null, "change_set", "hash")
             }
