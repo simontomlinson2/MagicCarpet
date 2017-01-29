@@ -40,11 +40,12 @@ class TestDatabaseConnector: Spek({
                 on { prepareStatement(any()) } doReturn preparedStatement
             }
             subject = DefaultDatabaseConnector(connection)
-            whenever(connection.metaData).thenReturn(metaData)
-            whenever(preparedStatement.execute()).thenReturn(true)
-            whenever(statement.execute(any())).thenReturn(true)
 
         }
+
+        whenever(connection.metaData).thenReturn(metaData)
+        whenever(preparedStatement.execute()).thenReturn(true)
+        whenever(statement.execute(any())).thenReturn(true)
 
         on("executing changes"){
             subject.executeStatement("SELECT * FROM Table")
