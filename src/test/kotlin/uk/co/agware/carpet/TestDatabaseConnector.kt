@@ -99,13 +99,13 @@ class TestDatabaseConnector: Spek({
         val metaData = mock<DatabaseMetaData>()
         whenever(connection.metaData).thenReturn(metaData)
 
-        on("checking the existance of the change set table") {
+        on("checking the existence of the change set table") {
             whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(false))
             whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
 
             subject.checkChangeSetTable(true)
 
-            it("should check the metadata for the tables existance") {
+            it("should check the metadata for the tables existence") {
                 verify(metaData).getTables(null, null, "change_set", null)
             }
 
@@ -139,13 +139,13 @@ class TestDatabaseConnector: Spek({
         val subject = DefaultDatabaseConnector(connection)
         val metaData = mock<DatabaseMetaData>()
         whenever(connection.metaData).thenReturn(metaData)
-        on("checking the existance of the change set table that exists") {
+        on("checking the existence of the change set table that exists") {
 
             whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(true))
             whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
             subject.checkChangeSetTable(true)
 
-            it("should check the metadata for the tables existance") {
+            it("should check the metadata for the tables existence") {
                 verify(metaData).getTables(null, null, "change_set", null)
             }
 
@@ -180,7 +180,7 @@ class TestDatabaseConnector: Spek({
             whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(false))
             subject.checkChangeSetTable(true)
 
-            it("Should check for the hash columns existance in the table") {
+            it("Should check for the hash columns existence in the table") {
                 verify(metaData).getColumns(null, null, "change_set", "hash")
             }
 
@@ -214,7 +214,7 @@ class TestDatabaseConnector: Spek({
         on("checking for the hash column that exists") {
             whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
             subject.checkChangeSetTable(true)
-            it("Should check for the hash columns existance in the table") {
+            it("Should check for the hash columns existence in the table") {
                 verify(metaData).getColumns(null, null, "change_set", "hash")
             }
 
