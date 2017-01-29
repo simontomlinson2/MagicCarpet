@@ -38,7 +38,7 @@ class TestChange: SubjectSpek<Change>({
             }
         }
 
-        it("should compare two changes using the version number") {
+        it("should order changes using the version number") {
             assertEquals(subject.compareTo(Change("1.1.1")), -1)
         }
     }
