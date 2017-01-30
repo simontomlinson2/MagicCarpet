@@ -17,6 +17,12 @@ import kotlin.test.assertEquals
 
 //TODO Rollback, CheckHashMatches, UpdateHash
 
+// TODO Tidy up the formatting
+// TODO There is no point to having 90% of your "on" statements when you're testing a single thing
+// TODO You're needlessly instantiating the variables in the describe block only to do it again in beforeEachTest
+// TODO Tidy up the formatting - saying twice because its terrible
+// TODO Your "on" statements should be a little more terse, pretty much just un-camelcased function names on("record task")
+// TODO obviously add a little more text when it doesn't make sense to have just that, but they shouldn't be long
 @RunWith(JUnitPlatform::class)
 class TestDatabaseConnector: Spek({
 
@@ -43,11 +49,14 @@ class TestDatabaseConnector: Spek({
 
         }
 
+        // TODO I feel like these should be in the "beforeEachTest" block, otherwise they aren't going to apply
+        // TODO to any run apart from the first
         whenever(connection.metaData).thenReturn(metaData)
         whenever(preparedStatement.execute()).thenReturn(true)
         whenever(statement.execute(any())).thenReturn(true)
 
         on("executing changes"){
+            // TODO Don't use "magic strings" twice, create the string once and then use it twice
             subject.executeStatement("SELECT * FROM Table")
             it("Should execute the statement on the database") {
                 verify(statement).execute("SELECT * FROM Table")
@@ -72,6 +81,7 @@ class TestDatabaseConnector: Spek({
         on("Recording the task") {
 
             subject.recordTask("1.0.0", "Create DB", "SELECT * FROM Table")
+            // TODO If you're going to multi-line then at least line everything up
             val expectedStatement = """INSERT INTO change_set
                              (version, task, applied, hash)
                              VALUES (?, ?, ?, ?)"""
@@ -86,7 +96,7 @@ class TestDatabaseConnector: Spek({
                 verify(preparedStatement).execute()
             }
 
-
+            // TODO That description doesn't actually make sense
             it("Should record populate the statement with the task values") {
                 assertEquals(expectedStatement, statementCaptor.value)
                 verify(preparedStatement).setString(1, "1.0.0")

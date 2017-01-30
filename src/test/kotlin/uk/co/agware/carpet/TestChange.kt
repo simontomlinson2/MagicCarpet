@@ -38,10 +38,15 @@ class TestChange: SubjectSpek<Change>({
             }
         }
 
+        // TODO Don't forget we're in Kotlin, "assertTrue { subject < Change("1.1.1") }" actually works
+        // TODO when you implement compareTo and makes the tests nicer to read
         it("should order changes using the version number") {
             assertEquals(subject.compareTo(Change("1.1.1")), -1)
         }
 
+        // TODO If you're going to be checking HashCode, you need to check that the Hash
+        // TODO of two identical objects is also identical, checking that it creates a HashCode
+        // TODO just shows a total lack of understanding of what you're actually testing
         it("should generate a hashcode for the change version") {
             assertEquals(subject.hashCode(), "1.0.0".hashCode())
         }
