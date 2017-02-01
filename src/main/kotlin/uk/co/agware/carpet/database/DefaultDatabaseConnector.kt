@@ -105,10 +105,10 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
     protected fun createChangeSetTable() {
         try {
             val createTableStatement = """CREATE TABLE $TABLE_NAME (
-                                                         $VERSION_COLUMN VARCHAR(255),
-                                                         $TASK_COLUMN VARCHAR(255),
-                                                         $DATE_COLUMN DATE
-                                                      )"""
+                                            $VERSION_COLUMN VARCHAR(255),
+                                            $TASK_COLUMN VARCHAR(255),
+                                            $DATE_COLUMN DATE
+                                          )"""
             executeStatement(createTableStatement)
             commit()
         }
