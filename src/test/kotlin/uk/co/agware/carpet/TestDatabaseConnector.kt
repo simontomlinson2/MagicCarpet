@@ -15,12 +15,27 @@ import java.sql.PreparedStatement
 import java.sql.Statement
 import kotlin.test.assertEquals
 
-//TODO Rollback, CheckHashMatches, UpdateHash
+// TODO Rollback, CheckHashMatches, UpdateHash
 
+// TODO When doing your setup, you should be using "given" to batch up your "beforeEachTest" stuff.
+// TODO have a base "beforeEachTest" in your describe which sets up all the mocks and any other setup that is
+// TODO required by ALL tests.
+
+// TODO Then within the "given" blocks you have the "beforeEachTest" to set the mocks to be more specific to certain
+// TODO configurations (95% this will work correctly!)
+
+// TODO The reason for doing this over using the "on" block to also do the setup is twofold, firstly, it doesn't make
+// TODO sense in terms of the language used. You're doing setup in a block designed for running a method that you're
+// TODO testing. Secondly, if you need to have the same setup in multiple "on" blocks then you're still having to
+// TODO repeat yourself
+
+// TODO Make sure your tests are assert("expected value", "actual value"), otherwise some tests will not make sense
+// TODO when they fail as it will say "expected <expected value> to be <incorrect value>", which if you end up with
+// TODO something like "null" you end up with it suggesting that you were expecting null
 @RunWith(JUnitPlatform::class)
 class TestDatabaseConnector: Spek(
         {
-
+            // TODO the word "object" isn't needed here, everything you test will be an object or a class
             describe("A Database Connection object") {
 
                 var statement: Statement? = null
@@ -29,6 +44,7 @@ class TestDatabaseConnector: Spek(
                 var metaData: DatabaseMetaData? = null
                 var subject: DefaultDatabaseConnector? = null
 
+                // TODO Pay attention to the linter telling you that you're doing things you don't need to, some !! aren't needed
                 beforeEachTest {
                     statement = mock<Statement>()
                     preparedStatement = mock<PreparedStatement>()
