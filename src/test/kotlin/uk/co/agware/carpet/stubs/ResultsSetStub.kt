@@ -113,7 +113,7 @@ class ResultsSetStub(val hasNext: Boolean = true) : ResultSet {
 
     @Throws(SQLException::class)
     override fun getString(columnLabel: String): String? {
-        return null
+        return "d9e135aa2e478e4bb7d6d735ba5c75e4"
     }
 
     @Throws(SQLException::class)
