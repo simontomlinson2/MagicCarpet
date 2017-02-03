@@ -13,7 +13,7 @@ import java.util.*
 /**
  * Created by simon on 29/01/2017.
  */
-class ResultsSetStub(val hasNext: Boolean = true) : ResultSet {
+class ResultsSetStub(val hasNext: Boolean = true, val hash: String? = null) : ResultSet {
 
 
     @Throws(SQLException::class)
@@ -113,7 +113,7 @@ class ResultsSetStub(val hasNext: Boolean = true) : ResultSet {
 
     @Throws(SQLException::class)
     override fun getString(columnLabel: String): String? {
-        return "d9e135aa2e478e4bb7d6d735ba5c75e4"
+        return hash
     }
 
     @Throws(SQLException::class)

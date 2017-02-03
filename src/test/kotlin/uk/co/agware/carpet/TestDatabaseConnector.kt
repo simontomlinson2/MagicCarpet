@@ -10,26 +10,24 @@ import org.junit.platform.runner.JUnitPlatform
 import org.junit.runner.RunWith
 import uk.co.agware.carpet.database.DefaultDatabaseConnector
 import uk.co.agware.carpet.database.toMD5
+import uk.co.agware.carpet.exception.MagicCarpetDatabaseException
+import uk.co.agware.carpet.exception.MagicCarpetParseException
 import uk.co.agware.carpet.stubs.ResultsSetStub
-import java.sql.Connection
-import java.sql.DatabaseMetaData
-import java.sql.PreparedStatement
-import java.sql.Statement
+import java.sql.*
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-//TODO CheckHashMatches, UpdateHash
-
 @RunWith(JUnitPlatform::class)
-class TestDatabaseConnector: Spek(
-        {
+class TestDatabaseConnector: Spek({
             describe("A Database Connection") {
 
                 var statement: Statement? = null
                 var preparedStatement: PreparedStatement? = null
                 var connection: Connection? = null
                 var metaData: DatabaseMetaData? = null
+                var subject: DefaultDatabaseConnector? = null
 
                 beforeEachTest {
                     statement = mock<Statement>()
@@ -45,9 +43,7 @@ class TestDatabaseConnector: Spek(
 
                 }
 
-                given("A Database Connector") {
-
-                    var subject: DefaultDatabaseConnector? = null
+                given("A Database connector") {
 
                     beforeEachTest {
                         subject = DefaultDatabaseConnector(connection!!)
@@ -72,42 +68,6 @@ class TestDatabaseConnector: Spek(
                     it("Should close the connection to the database") {
                         subject!!.close()
                         verify(connection)!!.close()
-                    }
-
-                    on("recording the task") {
-
-                        val expectedStatement = """INSERT INTO change_set
-                             (version, task, applied, hash)
-                             VALUES (?, ?, ?, ?)"""
-                        val statementCaptor = argumentCaptor<String>()
-
-                        subject!!.recordTask("1.0.0", "Create DB", "SELECT * FROM Table")
-
-                        it("Should prepare the statement") {
-                            verify(connection)!!.prepareStatement(statementCaptor.capture())
-                        }
-
-                        it("Should set the statement values") {
-                            assertEquals(expectedStatement, statementCaptor.value)
-                            verify(preparedStatement)!!.setString(1, "1.0.0")
-                            verify(preparedStatement)!!.setString(2, "Create DB")
-                            verify(preparedStatement)!!.setInt(3, "SELECT * FROM Table".hashCode())
-                            verify(preparedStatement)!!.setDate(any(), any())
-                        }
-
-                        it("Should execute the statement") {
-                            verify(preparedStatement)!!.execute()
-                        }
-
-                    }
-                }
-
-                given("A Database Connector") {
-
-                    var subject: DefaultDatabaseConnector? = null
-
-                    beforeEachTest {
-                        subject = DefaultDatabaseConnector(connection!!)
                     }
 
                     on("checking a version exists") {
@@ -160,11 +120,48 @@ class TestDatabaseConnector: Spek(
                             verify(preparedStatement)!!.executeQuery()
                         }
                     }
+
                 }
 
-                given("A Database Connector") {
+                given("A task to record"){
+                    val expectedStatement = """INSERT INTO change_set
+                             (version, task, applied, hash)
+                             VALUES (?, ?, ?, ?)"""
+                    val version = "1.0.0"
+                    val task = "Select from DB"
+                    val query = "SELECT * FROM Table"
 
-                    var subject: DefaultDatabaseConnector? = null
+                    beforeEachTest {
+                        subject = DefaultDatabaseConnector(connection!!)
+                    }
+
+                    on("recording the task") {
+
+                        val statementCaptor = argumentCaptor<String>()
+
+                        subject!!.recordTask(version, task, query)
+
+                        it("Should prepare the statement") {
+                            verify(connection)!!.prepareStatement(statementCaptor.capture())
+                        }
+
+                        it("Should set the statement values") {
+                            assertEquals(expectedStatement, statementCaptor.value)
+                            verify(preparedStatement)!!.setString(1, version)
+                            verify(preparedStatement)!!.setString(2, task)
+                            verify(preparedStatement)!!.setString(3, query.toMD5())
+                            verify(preparedStatement)!!.setDate(any(), any())
+                        }
+
+                        it("Should execute the statement") {
+                            verify(preparedStatement)!!.execute()
+                        }
+
+                    }
+                }
+
+                given("A database with no change_set table or hash column") {
+
                     val statementCaptor = argumentCaptor<String>()
 
                     beforeEachTest {
@@ -174,8 +171,8 @@ class TestDatabaseConnector: Spek(
                                 .thenReturn(ResultsSetStub(false))
                         whenever(metaData!!.getColumns(null, null, "change_set", "hash"))
                                 .thenReturn(ResultsSetStub(false))
-
                     }
+
 
                     on("checking the existence of the change set table") {
 
@@ -213,9 +210,7 @@ class TestDatabaseConnector: Spek(
                     }
                 }
 
-                given("A Database Connector") {
-
-                    var subject: DefaultDatabaseConnector? = null
+                given("a database with a change_set table but no hash column") {
 
                     beforeEachTest {
                         subject = DefaultDatabaseConnector(connection!!)
@@ -253,9 +248,7 @@ class TestDatabaseConnector: Spek(
                     }
                 }
 
-                given("A Database Connector") {
-
-                    var subject: DefaultDatabaseConnector? = null
+                given("A Database with a change_set table with a hash column") {
 
                     beforeEachTest {
                         subject = DefaultDatabaseConnector(connection!!)
@@ -267,7 +260,7 @@ class TestDatabaseConnector: Spek(
 
                     on("checking the existence of the change set table") {
 
-                         subject!!.checkChangeSetTable(true)
+                        subject!!.checkChangeSetTable(true)
 
                         it("Should check for the change set table") {
                             verify(metaData)!!.getTables(null, null, "change_set", null)
@@ -284,6 +277,17 @@ class TestDatabaseConnector: Spek(
                         it("should not commit the changes to the database") {
                             verify(connection, never())!!.commit()
                         }
+
+                    }
+                }
+
+                given("A change set table with a matching change set") {
+
+                    beforeEachTest {
+                        subject = DefaultDatabaseConnector(connection!!)
+
+                        whenever(preparedStatement!!.executeQuery())
+                                .thenReturn(ResultsSetStub(hash = "d9e135aa2e478e4bb7d6d735ba5c75e4"))
 
                     }
 
@@ -327,14 +331,12 @@ class TestDatabaseConnector: Spek(
                     }
                 }
 
-                given("A Database Connector") {
-
-                    var subject: DefaultDatabaseConnector? = null
+                given("A change set table with a matching change set that has null hash") {
 
                     beforeEachTest {
                         subject = DefaultDatabaseConnector(connection!!)
 
-                        whenever(preparedStatement!!.executeQuery()).thenReturn(ResultsSetStub(false))
+                        whenever(preparedStatement!!.executeQuery()).thenReturn(ResultsSetStub())
 
                     }
 
@@ -371,8 +373,180 @@ class TestDatabaseConnector: Spek(
                             verify(preparedStatement)!!.executeQuery()
                         }
 
-                        it("Should return true") {
+                        it("Should return false") {
                             assertFalse(result)
+                        }
+
+                    }
+                }
+
+                given("A change set table with a matching change set that has an incorrect hash") {
+
+                    beforeEachTest {
+                        subject = DefaultDatabaseConnector(connection!!)
+
+                        whenever(preparedStatement!!.executeQuery()).thenReturn(ResultsSetStub(hash = "this.is.incorrect"))
+
+                    }
+
+                    on("checking a change sets hash column doesn't match") {
+                        val expectedStatement = """SELECT * FROM change_set
+                        WHERE version = ?
+                            AND task = ?
+                            AND hash = ?
+                     """
+                        val statementCaptor = argumentCaptor<String>()
+                        val version = "1.0.0"
+                        val taskName = "Task Name"
+                        val query = "SELECT * FROM Table"
+
+                        it("Should fail to match the hashes") {
+                            assertFailsWith<MagicCarpetParseException> {
+                                subject!!.taskHashMatches(version, taskName, query)
+                            }
+                        }
+
+                        it("Should prepare the statement") {
+                            verify(connection)!!.prepareStatement(statementCaptor.capture())
+                            assertEquals(expectedStatement, statementCaptor.value)
+                        }
+
+                        it("Should record populate the statement with the value of the version") {
+                            verify(preparedStatement)!!.setString(1, version)
+                        }
+
+                        it("Should record populate the statement with the value of the task name") {
+                            verify(preparedStatement)!!.setString(2, taskName)
+                        }
+
+                        it("Should record populate the statement with the value of the query") {
+                            verify(preparedStatement)!!.setString(3, query.toMD5())
+                        }
+
+                        it("Should execute the statement and fail with an exception") {
+                            verify(preparedStatement)!!.executeQuery()
+                        }
+
+
+                    }
+                }
+
+                given("A task hash to update"){
+                    val expectedStatement = """UPDATE change_set
+                        SET hash = ?
+                        WHERE version = ?
+                            AND task = ?
+                            AND hash IS NULL
+                     """
+
+                    val version = "1.0.0"
+                    val task = "Create DB"
+                    val query = "SELECT * FROM Table"
+
+                    beforeEachTest {
+                        subject = DefaultDatabaseConnector(connection!!)
+                    }
+
+                    on("updating the task hash") {
+
+                        val statementCaptor = argumentCaptor<String>()
+
+                        subject!!.updateTaskHash(version, task, query)
+
+                        it("Should prepare the statement") {
+                            verify(connection)!!.prepareStatement(statementCaptor.capture())
+                        }
+
+                        it("Should set the statement values") {
+                            assertEquals(expectedStatement, statementCaptor.value)
+                            verify(preparedStatement)!!.setString(1, query.toMD5())
+                            verify(preparedStatement)!!.setString(2, version)
+                            verify(preparedStatement)!!.setString(3, task)
+                        }
+
+                        it("Should execute the statement") {
+                            verify(preparedStatement)!!.executeQuery()
+                        }
+
+                        it("Should commit the changes") {
+                            verify(connection)!!.commit()
+                        }
+
+                    }
+                }
+
+                given("A a failing database connection"){
+
+                    val version = "1.0.0"
+                    val task = "Create DB"
+                    val query = "SELECT * FROM Table"
+
+                    beforeEachTest {
+                        subject = DefaultDatabaseConnector(connection!!)
+
+                        whenever(connection!!.commit()).thenThrow(SQLException())
+                        whenever(connection!!.close()).thenThrow(SQLException())
+                        whenever(connection!!.rollback()).thenThrow(SQLException())
+                        whenever(preparedStatement!!.executeQuery()).thenThrow(SQLException())
+                        whenever(preparedStatement!!.execute()).thenThrow(SQLException())
+                        whenever(statement!!.execute(any())).thenThrow(SQLException())
+
+                    }
+
+                    on("making changes to the database") {
+
+                        it("Should fail to commit the changes") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.commit()
+                            }
+                        }
+
+                        it("Should fail to Close the connection") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.close()
+                            }
+                        }
+
+                        it("Should fail to execute a statement") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.executeStatement("SELECT * FROM Table")
+                            }
+                        }
+
+                        it("Should fail to record a task") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.recordTask(version, task, query)
+                            }
+                        }
+
+                        it("Should fail to check a version exists") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.versionExists(version)
+                            }
+                        }
+
+                        it("Should fail to check a task exists") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.taskExists(version, task)
+                            }
+                        }
+
+                        it("Should fail to update a task hash") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.updateTaskHash(version, task, query)
+                            }
+                        }
+
+                        it("Should fail to find a task hash that matches") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.taskHashMatches(version, task, query)
+                            }
+                        }
+
+                        it("Should fail to roll back changes") {
+                            assertFailsWith<MagicCarpetDatabaseException> {
+                                subject!!.rollBack()
+                            }
                         }
 
                     }

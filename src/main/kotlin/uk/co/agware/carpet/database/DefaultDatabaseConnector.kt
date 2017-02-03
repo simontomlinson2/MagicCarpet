@@ -74,7 +74,7 @@ open class DefaultDatabaseConnector (private val connection: Connection) : Datab
             statement.use { stmt ->
                 stmt.setString(1, version)
                 stmt.setString(2, taskName)
-                stmt.setInt(3, query.hashCode())
+                stmt.setString(3, query.toMD5())
                 stmt.setDate(4, Date(System.currentTimeMillis()))
                 stmt.execute()
             }
