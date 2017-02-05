@@ -449,63 +449,60 @@ class TestDatabaseConnector: Spek({
               whenever(statement!!.execute(any())).thenThrow(SQLException())
           }
 
-          // TODO What is the purpose of this "on" block? There doesn't seem to be any code being run in its body
-          on("making changes to the database") {
-
-              it("Should fail to commit the changes") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.commit()
-                  }
-              }
-
-              it("Should fail to Close the connection") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.close()
-                  }
-              }
-
-              it("Should fail to execute a statement") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.executeStatement("SELECT * FROM Table")
-                  }
-              }
-
-              it("Should fail to record a task") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.recordTask(version, task, query)
-                  }
-              }
-
-              it("Should fail to check a version exists") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.versionExists(version)
-                  }
-              }
-
-              it("Should fail to check a task exists") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.taskExists(version, task)
-                  }
-              }
-
-              it("Should fail to update a task hash") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.updateTaskHash(version, task, query)
-                  }
-              }
-
-              it("Should fail to find a task hash that matches") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.taskHashMatches(version, task, query)
-                  }
-              }
-
-              it("Should fail to roll back changes") {
-                  assertFailsWith<MagicCarpetDatabaseException> {
-                      subject!!.rollBack()
-                  }
+          it("Should fail to commit the changes") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.commit()
               }
           }
+
+          it("Should fail to Close the connection") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.close()
+              }
+          }
+
+          it("Should fail to execute a statement") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.executeStatement("SELECT * FROM Table")
+              }
+          }
+
+          it("Should fail to record a task") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.recordTask(version, task, query)
+              }
+          }
+
+          it("Should fail to check a version exists") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.versionExists(version)
+              }
+          }
+
+          it("Should fail to check a task exists") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.taskExists(version, task)
+              }
+          }
+
+          it("Should fail to update a task hash") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.updateTaskHash(version, task, query)
+              }
+          }
+
+          it("Should fail to find a task hash that matches") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.taskHashMatches(version, task, query)
+              }
+          }
+
+          it("Should fail to roll back changes") {
+              assertFailsWith<MagicCarpetDatabaseException> {
+                  subject!!.rollBack()
+              }
+          }
+
       }
   }
 })

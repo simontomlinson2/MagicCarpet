@@ -58,7 +58,7 @@ open class MagicCarpet(protected val databaseConnector: DatabaseConnector,
     protected val path = basePath ?: getJsonOrXmlPath(Paths.get("."))
 
     protected val jsonMapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule())
-    protected val xmlMapper = XmlMapper()
+    protected val xmlMapper: ObjectMapper = XmlMapper().registerModule(KotlinModule())
 
     /* Returns the JSON or XML file at a given Path */
     protected fun getJsonOrXmlPath(originalPath: Path) : Path {
@@ -138,6 +138,7 @@ open class MagicCarpet(protected val databaseConnector: DatabaseConnector,
 
         return Files.walk(path)
           .toList()
+          .filter { p -> !Files.isDirectory(p) }
           .map { p -> createFileTask(p, filenameMatch) }
     }
 
@@ -146,7 +147,11 @@ open class MagicCarpet(protected val databaseConnector: DatabaseConnector,
         val fileName = filePath.fileName.toString()
         val matcher = pattern.matcher(fileName)
         matcher.find()
-        val order = matcher.group(1) ?: "1000000" // If no number is supplied then set a high number
+
+        val order = when(matcher.group(1).isEmpty()) {
+            true -> "1000000" // If no number is supplied then set a high number
+            else -> matcher.group(1)
+        }
         val taskName = matcher.group(3)
 
         return FileTask(taskName, order.toInt(), filePath.toString())
@@ -159,7 +164,7 @@ open class MagicCarpet(protected val databaseConnector: DatabaseConnector,
         try {
             val contents = Files.readAllBytes(path)
 
-            return when (path.endsWith(".json")) {
+            return when (path.toString().endsWith(".json")) {
                 true -> jsonMapper.readValue(contents)
                 else -> xmlMapper.readValue(contents)
             }
