@@ -36,17 +36,12 @@ class TestScriptTask: Spek({
                     assertEquals(2, statement.allValues.size)
                     assertTrue(statement.allValues.contains("SELECT * FROM Table"))
                     assertTrue(statement.allValues.contains("SELECT * FROM Other_Table"))
-
                 }
-
             }
-
-
        }
-
    }
 
-    describe("A ScriptTask object with delimiter"){
+    describe("A ScriptTask object with delimiter") {
 
         val subject = ScriptTask("Test Task", 1, "SELECT * FROM Table, SELECT * FROM Other_Table", ",")
 
@@ -64,14 +59,8 @@ class TestScriptTask: Spek({
                     assertEquals(2, statement.allValues.size)
                     assertTrue(statement.allValues.contains("SELECT * FROM Table"))
                     assertTrue(statement.allValues.contains("SELECT * FROM Other_Table"))
-
                 }
-
             }
-
-
         }
     }
-
-
 })

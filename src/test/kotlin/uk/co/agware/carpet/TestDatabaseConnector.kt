@@ -21,48 +21,48 @@ class TestDatabaseConnector: Spek({
 
   describe("A Database Connection") {
 
-      var statement: Statement? = null
-      var preparedStatement: PreparedStatement? = null
-      var connection: Connection? = null
-      var metaData: DatabaseMetaData? = null
-      var subject: DefaultDatabaseConnector? = null
+      var statement = mock<Statement>()
+      var preparedStatement = mock<PreparedStatement>()
+      var connection = mock<Connection>()
+      var metaData = mock<DatabaseMetaData>()
+      var subject = DefaultDatabaseConnector(connection)
 
       beforeEachTest {
           statement = mock<Statement>()
           preparedStatement = mock<PreparedStatement>()
           connection = mock<Connection>()
           metaData = mock<DatabaseMetaData>()
-          whenever(connection!!.createStatement()).thenReturn(statement)
-          whenever(connection!!.prepareStatement(any())).thenReturn(preparedStatement)
-          whenever(connection!!.metaData).thenReturn(metaData)
-          whenever(preparedStatement!!.execute()).thenReturn(true)
-          whenever(statement!!.execute(any())).thenReturn(true)
-          whenever(preparedStatement!!.executeQuery()).thenReturn(ResultsSetStub(true))
+          whenever(connection.createStatement()).thenReturn(statement)
+          whenever(connection.prepareStatement(any())).thenReturn(preparedStatement)
+          whenever(connection.metaData).thenReturn(metaData)
+          whenever(preparedStatement.execute()).thenReturn(true)
+          whenever(statement.execute(any())).thenReturn(true)
+          whenever(preparedStatement.executeQuery()).thenReturn(ResultsSetStub(true))
 
-          subject = DefaultDatabaseConnector(connection!!)
+          subject = DefaultDatabaseConnector(connection)
       }
 
       given("A Database connector") {
 
           it("Should execute the statement on the database") {
               val select = "SELECT * FROM Table"
-              subject!!.executeStatement(select)
-              verify(statement)!!.execute(select)
+              subject.executeStatement(select)
+              verify(statement).execute(select)
           }
 
           it("Should commit the change to the database") {
-              subject!!.commit()
-              verify(connection)!!.commit()
+              subject.commit()
+              verify(connection).commit()
           }
 
           it("Should rollback the database changes") {
-              subject!!.rollBack()
-              verify(connection)!!.rollback()
+              subject.rollBack()
+              verify(connection).rollback()
           }
 
           it("Should close the connection to the database") {
-              subject!!.close()
-              verify(connection)!!.close()
+              subject.close()
+              verify(connection).close()
           }
 
           on("checking a version exists") {
@@ -71,19 +71,19 @@ class TestDatabaseConnector: Spek({
               val statementCaptor = argumentCaptor<String>()
               val version = "1.0.0"
 
-              subject!!.versionExists(version)
+              subject.versionExists(version)
 
               it("Should prepare the statement") {
-                  verify(connection)!!.prepareStatement(statementCaptor.capture())
+                  verify(connection).prepareStatement(statementCaptor.capture())
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
               }
 
               it("Should record populate the statement with the value of the version") {
-                  verify(preparedStatement)!!.setString(1, version)
+                  verify(preparedStatement).setString(1, version)
               }
 
               it("Should execute the statement on the database") {
-                  verify(preparedStatement)!!.executeQuery()
+                  verify(preparedStatement).executeQuery()
               }
           }
 
@@ -96,23 +96,23 @@ class TestDatabaseConnector: Spek({
               val version = "1.0.0"
               val taskName = "Task Name"
 
-              subject!!.taskExists(version, taskName)
+              subject.taskExists(version, taskName)
 
               it("Should prepare the statement") {
-                  verify(connection)!!.prepareStatement(statementCaptor.capture())
+                  verify(connection).prepareStatement(statementCaptor.capture())
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
               }
 
               it("Should record populate the statement with the value of the version") {
-                  verify(preparedStatement)!!.setString(1, version)
+                  verify(preparedStatement).setString(1, version)
               }
 
               it("Should record populate the statement with the value of the task name") {
-                  verify(preparedStatement)!!.setString(2, taskName)
+                  verify(preparedStatement).setString(2, taskName)
               }
 
               it("Should execute the statement") {
-                  verify(preparedStatement)!!.executeQuery()
+                  verify(preparedStatement).executeQuery()
               }
           }
       }
@@ -129,22 +129,22 @@ class TestDatabaseConnector: Spek({
 
               val statementCaptor = argumentCaptor<String>()
 
-              subject!!.recordTask(version, task, query)
+              subject.recordTask(version, task, query)
 
               it("Should prepare the statement") {
-                  verify(connection)!!.prepareStatement(statementCaptor.capture())
+                  verify(connection).prepareStatement(statementCaptor.capture())
               }
 
               it("Should set the statement values") {
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
-                  verify(preparedStatement)!!.setString(1, version)
-                  verify(preparedStatement)!!.setString(2, task)
-                  verify(preparedStatement)!!.setString(3, query.toMD5())
-                  verify(preparedStatement)!!.setDate(any(), any())
+                  verify(preparedStatement).setString(1, version)
+                  verify(preparedStatement).setString(2, task)
+                  verify(preparedStatement).setString(3, query.toMD5())
+                  verify(preparedStatement).setDate(any(), any())
               }
 
               it("Should execute the statement") {
-                  verify(preparedStatement)!!.execute()
+                  verify(preparedStatement).execute()
               }
           }
       }
@@ -154,22 +154,22 @@ class TestDatabaseConnector: Spek({
           val statementCaptor = argumentCaptor<String>()
 
           beforeEachTest {
-              whenever(metaData!!.getTables(null, null, "change_set", null))
+              whenever(metaData.getTables(null, null, "change_set", null))
                       .thenReturn(ResultsSetStub(false))
-              whenever(metaData!!.getColumns(null, null, "change_set", "hash"))
+              whenever(metaData.getColumns(null, null, "change_set", "hash"))
                       .thenReturn(ResultsSetStub(false))
           }
 
           on("checking the existence of the change set table") {
 
-              subject!!.checkChangeSetTable(true)
+              subject.checkChangeSetTable(true)
 
               it("should check the metadata for the tables existence") {
-                  verify(metaData)!!.getTables(null, null, "change_set", null)
+                  verify(metaData).getTables(null, null, "change_set", null)
               }
 
               it("should execute create and update statements") {
-                  verify(statement, times(2))!!.execute(statementCaptor.capture())
+                  verify(statement, times(2)).execute(statementCaptor.capture())
               }
 
               it("should create the change set table") {
@@ -182,7 +182,7 @@ class TestDatabaseConnector: Spek({
               }
 
               it("should check the metadata for the hash columns existence") {
-                  verify(metaData)!!.getColumns(null, null, "change_set", "hash")
+                  verify(metaData).getColumns(null, null, "change_set", "hash")
               }
 
               it("should create the hash column") {
@@ -191,7 +191,7 @@ class TestDatabaseConnector: Spek({
               }
 
               it("should commit the changes to the database") {
-                  verify(connection, times(2))!!.commit()
+                  verify(connection, times(2)).commit()
               }
           }
       }
@@ -199,33 +199,33 @@ class TestDatabaseConnector: Spek({
       given("a database with a change_set table but no hash column") {
 
           beforeEachTest {
-              whenever(metaData!!.getTables(null, null, "change_set", null))
+              whenever(metaData.getTables(null, null, "change_set", null))
                       .thenReturn(ResultsSetStub(true))
-              whenever(metaData!!.getColumns(null, null, "change_set", "hash"))
+              whenever(metaData.getColumns(null, null, "change_set", "hash"))
                       .thenReturn(ResultsSetStub(false))
           }
 
           on("checking the existence of the change set table") {
 
-              subject!!.checkChangeSetTable(true)
+              subject.checkChangeSetTable(true)
 
               it("Should check for the change set table") {
-                  verify(metaData)!!.getTables(null, null, "change_set", null)
+                  verify(metaData).getTables(null, null, "change_set", null)
               }
 
               it("Should check for the hash columns existence in the table") {
-                  verify(metaData)!!.getColumns(null, null, "change_set", "hash")
+                  verify(metaData).getColumns(null, null, "change_set", "hash")
               }
 
               it("Should update the table schema for the hash column") {
                   val expectedStatement = "ALTER TABLE change_set ADD COLUMN hash VARCHAR(64)"
-                  verify(statement)!!.execute(check {
+                  verify(statement).execute(check {
                       assertEquals(expectedStatement, it)
                   })
               }
 
               it("should commit the changes to the database") {
-                  verify(connection)!!.commit()
+                  verify(connection).commit()
               }
           }
       }
@@ -233,28 +233,28 @@ class TestDatabaseConnector: Spek({
       given("A Database with a change_set table with a hash column") {
 
           beforeEachTest {
-              whenever(metaData!!.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(true))
-              whenever(metaData!!.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
+              whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(true))
+              whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
           }
 
           on("checking the existence of the change set table") {
 
-              subject!!.checkChangeSetTable(true)
+              subject.checkChangeSetTable(true)
 
               it("Should check for the change set table") {
-                  verify(metaData)!!.getTables(null, null, "change_set", null)
+                  verify(metaData).getTables(null, null, "change_set", null)
               }
 
               it("Should check for the hash columns existence in the table") {
-                  verify(metaData)!!.getColumns(null, null, "change_set", "hash")
+                  verify(metaData).getColumns(null, null, "change_set", "hash")
               }
 
               it("Should not create the table or update the table schema for the hash column") {
-                  verify(statement, never())!!.execute(any())
+                  verify(statement, never()).execute(any())
               }
 
               it("should not commit the changes to the database") {
-                  verify(connection, never())!!.commit()
+                  verify(connection, never()).commit()
               }
           }
       }
@@ -262,7 +262,7 @@ class TestDatabaseConnector: Spek({
       given("A change set table with a matching change set") {
 
           beforeEachTest {
-              whenever(preparedStatement!!.executeQuery())
+              whenever(preparedStatement.executeQuery())
                       .thenReturn(ResultsSetStub(hash = "d9e135aa2e478e4bb7d6d735ba5c75e4"))
           }
 
@@ -276,27 +276,27 @@ class TestDatabaseConnector: Spek({
               val version = "1.0.0"
               val taskName = "Task Name"
               val query = "SELECT * FROM Table"
-              val result = subject!!.taskHashMatches(version, taskName, query)
+              val result = subject.taskHashMatches(version, taskName, query)
 
               it("Should prepare the statement") {
-                  verify(connection)!!.prepareStatement(statementCaptor.capture())
+                  verify(connection).prepareStatement(statementCaptor.capture())
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
               }
 
               it("Should record populate the statement with the value of the version") {
-                  verify(preparedStatement)!!.setString(1, version)
+                  verify(preparedStatement).setString(1, version)
               }
 
               it("Should record populate the statement with the value of the task name") {
-                  verify(preparedStatement)!!.setString(2, taskName)
+                  verify(preparedStatement).setString(2, taskName)
               }
 
               it("Should record populate the statement with the value of the query") {
-                  verify(preparedStatement)!!.setString(3, query.toMD5())
+                  verify(preparedStatement).setString(3, query.toMD5())
               }
 
               it("Should execute the statement") {
-                  verify(preparedStatement)!!.executeQuery()
+                  verify(preparedStatement).executeQuery()
               }
 
               it("Should return true") {
@@ -308,7 +308,7 @@ class TestDatabaseConnector: Spek({
       given("A change set table with a matching change set that has null hash") {
 
           beforeEachTest {
-              whenever(preparedStatement!!.executeQuery()).thenReturn(ResultsSetStub())
+              whenever(preparedStatement.executeQuery()).thenReturn(ResultsSetStub())
           }
 
           on("checking a change sets hash column doesn't match") {
@@ -321,27 +321,27 @@ class TestDatabaseConnector: Spek({
               val version = "1.0.0"
               val taskName = "Task Name"
               val query = "SELECT * FROM Table"
-              val result = subject!!.taskHashMatches(version, taskName, query)
+              val result = subject.taskHashMatches(version, taskName, query)
 
               it("Should prepare the statement") {
-                  verify(connection)!!.prepareStatement(statementCaptor.capture())
+                  verify(connection).prepareStatement(statementCaptor.capture())
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
               }
 
               it("Should record populate the statement with the value of the version") {
-                  verify(preparedStatement)!!.setString(1, version)
+                  verify(preparedStatement).setString(1, version)
               }
 
               it("Should record populate the statement with the value of the task name") {
-                  verify(preparedStatement)!!.setString(2, taskName)
+                  verify(preparedStatement).setString(2, taskName)
               }
 
               it("Should record populate the statement with the value of the query") {
-                  verify(preparedStatement)!!.setString(3, query.toMD5())
+                  verify(preparedStatement).setString(3, query.toMD5())
               }
 
               it("Should execute the statement") {
-                  verify(preparedStatement)!!.executeQuery()
+                  verify(preparedStatement).executeQuery()
               }
 
               it("Should return false") {
@@ -353,7 +353,7 @@ class TestDatabaseConnector: Spek({
       given("A change set table with a matching change set that has an incorrect hash") {
 
           beforeEachTest {
-              whenever(preparedStatement!!.executeQuery()).thenReturn(ResultsSetStub(hash = "this.is.incorrect"))
+              whenever(preparedStatement.executeQuery()).thenReturn(ResultsSetStub(hash = "this.is.incorrect"))
           }
 
           on("checking a change sets hash column doesn't match") {
@@ -369,29 +369,29 @@ class TestDatabaseConnector: Spek({
 
               it("Should fail to match the hashes") {
                   assertFailsWith<MagicCarpetParseException> {
-                      subject!!.taskHashMatches(version, taskName, query)
+                      subject.taskHashMatches(version, taskName, query)
                   }
               }
 
               it("Should prepare the statement") {
-                  verify(connection)!!.prepareStatement(statementCaptor.capture())
+                  verify(connection).prepareStatement(statementCaptor.capture())
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
               }
 
               it("Should record populate the statement with the value of the version") {
-                  verify(preparedStatement)!!.setString(1, version)
+                  verify(preparedStatement).setString(1, version)
               }
 
               it("Should record populate the statement with the value of the task name") {
-                  verify(preparedStatement)!!.setString(2, taskName)
+                  verify(preparedStatement).setString(2, taskName)
               }
 
               it("Should record populate the statement with the value of the query") {
-                  verify(preparedStatement)!!.setString(3, query.toMD5())
+                  verify(preparedStatement).setString(3, query.toMD5())
               }
 
               it("Should execute the statement and fail with an exception") {
-                  verify(preparedStatement)!!.executeQuery()
+                  verify(preparedStatement).executeQuery()
               }
           }
       }
@@ -411,25 +411,25 @@ class TestDatabaseConnector: Spek({
 
               val statementCaptor = argumentCaptor<String>()
 
-              subject!!.updateTaskHash(version, task, query)
+              subject.updateTaskHash(version, task, query)
 
               it("Should prepare the statement") {
-                  verify(connection)!!.prepareStatement(statementCaptor.capture())
+                  verify(connection).prepareStatement(statementCaptor.capture())
               }
 
               it("Should set the statement values") {
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
-                  verify(preparedStatement)!!.setString(1, query.toMD5())
-                  verify(preparedStatement)!!.setString(2, version)
-                  verify(preparedStatement)!!.setString(3, task)
+                  verify(preparedStatement).setString(1, query.toMD5())
+                  verify(preparedStatement).setString(2, version)
+                  verify(preparedStatement).setString(3, task)
               }
 
               it("Should execute the statement") {
-                  verify(preparedStatement)!!.executeQuery()
+                  verify(preparedStatement).executeQuery()
               }
 
               it("Should commit the changes") {
-                  verify(connection)!!.commit()
+                  verify(connection).commit()
               }
           }
       }
@@ -441,65 +441,65 @@ class TestDatabaseConnector: Spek({
           val query = "SELECT * FROM Table"
 
           beforeEachTest {
-              whenever(connection!!.commit()).thenThrow(SQLException())
-              whenever(connection!!.close()).thenThrow(SQLException())
-              whenever(connection!!.rollback()).thenThrow(SQLException())
-              whenever(preparedStatement!!.executeQuery()).thenThrow(SQLException())
-              whenever(preparedStatement!!.execute()).thenThrow(SQLException())
-              whenever(statement!!.execute(any())).thenThrow(SQLException())
+              whenever(connection.commit()).thenThrow(SQLException())
+              whenever(connection.close()).thenThrow(SQLException())
+              whenever(connection.rollback()).thenThrow(SQLException())
+              whenever(preparedStatement.executeQuery()).thenThrow(SQLException())
+              whenever(preparedStatement.execute()).thenThrow(SQLException())
+              whenever(statement.execute(any())).thenThrow(SQLException())
           }
 
           it("Should fail to commit the changes") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.commit()
+                  subject.commit()
               }
           }
 
           it("Should fail to Close the connection") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.close()
+                  subject.close()
               }
           }
 
           it("Should fail to execute a statement") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.executeStatement("SELECT * FROM Table")
+                  subject.executeStatement("SELECT * FROM Table")
               }
           }
 
           it("Should fail to record a task") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.recordTask(version, task, query)
+                  subject.recordTask(version, task, query)
               }
           }
 
           it("Should fail to check a version exists") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.versionExists(version)
+                  subject.versionExists(version)
               }
           }
 
           it("Should fail to check a task exists") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.taskExists(version, task)
+                  subject.taskExists(version, task)
               }
           }
 
           it("Should fail to update a task hash") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.updateTaskHash(version, task, query)
+                  subject.updateTaskHash(version, task, query)
               }
           }
 
           it("Should fail to find a task hash that matches") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.taskHashMatches(version, task, query)
+                  subject.taskHashMatches(version, task, query)
               }
           }
 
           it("Should fail to roll back changes") {
               assertFailsWith<MagicCarpetDatabaseException> {
-                  subject!!.rollBack()
+                  subject.rollBack()
               }
           }
 

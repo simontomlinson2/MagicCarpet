@@ -21,19 +21,19 @@ class TestFileTask: Spek({
 
   describe("A FileTask Object") {
 
+    var connection = Mockito.mock(DatabaseConnector::class.java)
+
+    beforeEachTest {
+      connection = Mockito.mock(DatabaseConnector::class.java)
+    }
+
     given("A classpath file") {
 
       val task = FileTask("Test Task", 1, "classpath:classpathTest.sql", ",")
 
-      var connection: DatabaseConnector? = null
-
-      beforeEachTest {
-        connection = Mockito.mock(DatabaseConnector::class.java)
-      }
-
       on("task execution") {
 
-        task.performTask(connection!!)
+        task.performTask(connection)
 
         it("should execute each statement") {
           val statements = argumentCaptor<String>()
@@ -46,8 +46,10 @@ class TestFileTask: Spek({
         }
       }
 
-      it("Should fail with a MagicCarpetParseException"){
-        assertFailsWith<MagicCarpetParseException> { FileTask("A Failing Task", 2, "classpath:this.does.not.exist") }
+      it("Should fail with a MagicCarpetParseException") {
+        assertFailsWith<MagicCarpetParseException> {
+          FileTask("A Failing Task", 2, "classpath:this.does.not.exist")
+        }
       }
     }
 
@@ -55,15 +57,9 @@ class TestFileTask: Spek({
 
       val subject = FileTask("Test Task", 1, "src/test/files/test.sql")
 
-      var connection: DatabaseConnector? = null
-
-      beforeEachTest {
-        connection = Mockito.mock(DatabaseConnector::class.java)
-      }
-
       on("task execution") {
 
-        subject.performTask(connection!!)
+        subject.performTask(connection)
 
         it("should execute each statement") {
           val statements = argumentCaptor<String>()
@@ -76,10 +72,11 @@ class TestFileTask: Spek({
         }
       }
 
-      it("Should fail with a MagicCarpetParseException"){
-        assertFailsWith<MagicCarpetParseException> { FileTask("A Failing Task", 2, "this/does/not/exist") }
+      it("Should fail with a MagicCarpetParseException") {
+        assertFailsWith<MagicCarpetParseException> {
+          FileTask("A Failing Task", 2, "this/does/not/exist")
+        }
       }
     }
   }
-
 })

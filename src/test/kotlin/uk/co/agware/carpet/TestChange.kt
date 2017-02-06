@@ -44,5 +44,4 @@ class TestChange: SubjectSpek<Change>({
             assertEquals(subject.hashCode(), subject.hashCode())
         }
     }
-
  })
