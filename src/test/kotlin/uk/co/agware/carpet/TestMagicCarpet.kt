@@ -136,55 +136,54 @@ class TestMagicCarpet: Spek({
           verify(connector, times(2)).recordTask(any(), any(), any())
         }
       }
+    }
 
-      given("A directory structure") {
-        // TODO Shadowed variable, watch the linter, its basically telling you that you messed up your brackets
-        val path = Paths.get("src/test/files/nest")
+    given("A directory structure") {
+      val path = Paths.get("src/test/files/nest")
 
-        beforeEachTest {
-          subject = MagicCarpet(connector, basePath = path)
-          whenever(connector.versionExists(any())).thenReturn(false)
+      beforeEachTest {
+        subject = MagicCarpet(connector, basePath = path)
+        whenever(connector.versionExists(any())).thenReturn(false)
+      }
+
+      on("Parsing Changes") {
+
+        subject.parseChanges()
+
+        it("Should read the xml changes") {
+          assertEquals(3, subject.changes.size)
+          assertEquals(1, subject.changes[0].tasks.size)
+        }
+      }
+
+      on("Executing changes") {
+
+        val statementCaptor = argumentCaptor<String>()
+        subject.run()
+
+        it("should check the change set table exists") {
+          verify(connector).checkChangeSetTable(any())
         }
 
-        on("Parsing Changes") {
+        it("should check the version exists in the database") {
+          verify(connector, times(3)).versionExists(any())
+        }
 
-          subject.parseChanges()
-
-          it("Should read the xml changes") {
-            assertEquals(3, subject.changes.size)
-            assertEquals(1, subject.changes[0].tasks.size)
+        it("should perform the tasks") {
+          verify(connector, times(6)).executeStatement(statementCaptor.capture())
+          assertEquals(6, statementCaptor.allValues.size)
+          assertTrue {
+            statementCaptor.allValues.contains("create table test(version integer, test date)")
+            statementCaptor.allValues.contains("alter table test add column another varchar(64)")
+            statementCaptor.allValues.contains("create table second(version varchar(64))")
+            statementCaptor.allValues.contains("create table third(version varchar(64))")
+            statementCaptor.allValues.contains("SELECT * FROM Table")
+            statementCaptor.allValues.contains("SELECT * FROM Other_Table")
           }
         }
 
-        on("Executing changes") {
-
-          val statementCaptor = argumentCaptor<String>()
-          subject.run()
-
-          it("should check the change set table exists") {
-            verify(connector).checkChangeSetTable(any())
-          }
-
-          it("should check the version exists in the database") {
-            verify(connector, times(3)).versionExists(any())
-          }
-
-          it("should perform the tasks") {
-            verify(connector, times(6)).executeStatement(statementCaptor.capture())
-            assertEquals(6, statementCaptor.allValues.size)
-            assertTrue {
-              statementCaptor.allValues.contains("create table test(version integer, test date)")
-              statementCaptor.allValues.contains("alter table test add column another varchar(64)")
-              statementCaptor.allValues.contains("create table second(version varchar(64))")
-              statementCaptor.allValues.contains("create table third(version varchar(64))")
-              statementCaptor.allValues.contains("SELECT * FROM Table")
-              statementCaptor.allValues.contains("SELECT * FROM Other_Table")
-            }
-          }
-
-          it("should record the tasks") {
-            verify(connector, times(6)).recordTask(any(), any(), any())
-          }
+        it("should record the tasks") {
+          verify(connector, times(6)).recordTask(any(), any(), any())
         }
       }
     }
