@@ -9,11 +9,13 @@ import org.jetbrains.spek.api.dsl.on
 import org.junit.platform.runner.JUnitPlatform
 import org.junit.runner.RunWith
 import uk.co.agware.carpet.database.DefaultDatabaseConnector
+import uk.co.agware.carpet.exception.MagicCarpetParseException
 import uk.co.agware.carpet.stubs.ResultsSetStub
 import java.nio.file.Paths
 import java.sql.DatabaseMetaData
 import java.sql.PreparedStatement
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 @RunWith(JUnitPlatform::class)
@@ -187,5 +189,111 @@ class TestMagicCarpet: Spek({
         }
       }
     }
+
+    given("A File that doesn't exist") {
+
+      val path = Paths.get("this/does/not/exist")
+
+      beforeEachTest {
+        subject = MagicCarpet(connector, basePath = path)
+        whenever(connector.versionExists(any())).thenReturn(false)
+      }
+
+      it("should fail to parse the changes") {
+        assertFailsWith<MagicCarpetParseException>{
+          subject.parseChanges()
+        }
+
+      }
+    }
+
+    given("A base json file path and developer mode on") {
+
+      val path = Paths.get("src/test/files/ChangeSet.json")
+
+      beforeEachTest {
+        subject = MagicCarpet(connector, devMode = true, basePath = path)
+        whenever(connector.versionExists(any())).thenReturn(false)
+      }
+
+      on("Parsing Changes") {
+
+        subject.parseChanges()
+
+        it("Should not read the json changes") {
+          assertEquals(0, subject.changes.size)
+        }
+      }
+
+      on("Executing changes") {
+
+        val statementCaptor = argumentCaptor<String>()
+        subject.executeChanges()
+
+        it("should not check the change set table exists") {
+          verify(connector, never()).checkChangeSetTable(any())
+        }
+
+        it("should not check the version exists in the database") {
+          verify(connector, never()).versionExists(any())
+        }
+
+        it("should not  perform the tasks") {
+          verify(connector, never()).executeStatement(statementCaptor.capture())
+          assertEquals(0, statementCaptor.allValues.size)
+
+        }
+
+        it("should not record the tasks") {
+          verify(connector, never()).recordTask(any(), any(), any())
+        }
+      }
+    }
+
+    given("A base json file path with changes that have already been run") {
+
+      val path = Paths.get("src/test/files/ChangeSet.json")
+
+      beforeEachTest {
+        subject = MagicCarpet(connector, basePath = path)
+        whenever(connector.versionExists(any())).thenReturn(true)
+        whenever(connector.taskExists(any(), any())).thenReturn(true)
+        whenever(connector.taskHashMatches(any(), any(), any())).thenReturn(false)
+      }
+
+      on("Parsing Changes") {
+
+        subject.parseChanges()
+
+        it("Should read the json changes") {
+          assertEquals(2, subject.changes.size)
+          assertEquals(1, subject.changes[0].tasks.size)
+        }
+      }
+
+      on("Executing changes") {
+
+        subject.run()
+
+        it("should check the change set table exists") {
+          verify(connector).checkChangeSetTable(any())
+        }
+
+        it("should check the version exists in the database") {
+          verify(connector, times(2)).versionExists(any())
+        }
+
+        it("should check the task exists"){
+          verify(connector, times(2)).taskExists(any(), any())
+        }
+
+        it("should update the task hash"){
+          verify(connector, times(2)).updateTaskHash(any(), any(), any())
+        }
+
+
+      }
+    }
+
   }
 })
