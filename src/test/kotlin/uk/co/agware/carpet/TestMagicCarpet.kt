@@ -291,6 +291,15 @@ class TestMagicCarpet: Spek({
           verify(connector, times(2)).updateTaskHash(any(), any(), any())
         }
 
+        it("should not  perform the tasks") {
+            val statementCaptor = argumentCaptor<String>()
+            verify(connector, never()).executeStatement(statementCaptor.capture())
+            assertEquals(0, statementCaptor.allValues.size)
+        }
+
+        it("should not record the tasks") {
+          verify(connector, never()).recordTask(any(), any(), any())
+        }
 
       }
     }
