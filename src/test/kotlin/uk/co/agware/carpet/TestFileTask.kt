@@ -16,6 +16,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+// TODO Improve the test descriptions
+// TODO Test what happens with empty files
 @RunWith(JUnitPlatform::class)
 class TestFileTask: Spek({
 

@@ -40,6 +40,7 @@ class TestChange: SubjectSpek<Change>({
             assertTrue { subject < Change("1.1.0") }
         }
 
+        // TODO Remove this test, it does literally nothing
         it("should generate a hashcode for the change version") {
             assertEquals(subject.hashCode(), subject.hashCode())
         }

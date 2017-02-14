@@ -14,7 +14,7 @@ import uk.co.agware.carpet.database.DatabaseConnector
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-// TODO See FileTask
+// TODO See FileTask <-- Still this
 @RunWith(JUnitPlatform::class)
 class TestScriptTask: Spek({
 

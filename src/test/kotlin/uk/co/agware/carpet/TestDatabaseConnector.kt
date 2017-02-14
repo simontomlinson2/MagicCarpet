@@ -12,6 +12,7 @@ import uk.co.agware.carpet.database.DefaultDatabaseConnector
 import uk.co.agware.carpet.database.toMD5
 import uk.co.agware.carpet.exception.MagicCarpetDatabaseException
 import uk.co.agware.carpet.exception.MagicCarpetParseException
+import uk.co.agware.carpet.extensions.assertEqualsIgnoreIndent
 import uk.co.agware.carpet.stubs.ResultsSetStub
 import java.sql.*
 import kotlin.test.*
@@ -42,7 +43,7 @@ class TestDatabaseConnector: Spek({
           subject = DefaultDatabaseConnector(connection)
       }
 
-      given("A Database connector") {
+      given("a DatabaseConnector") {
 
           it("Should execute the statement on the database") {
               val select = "SELECT * FROM Table"
@@ -73,21 +74,21 @@ class TestDatabaseConnector: Spek({
 
               subject.versionExists(version)
 
-              it("Should prepare the statement") {
+              it("should prepare the statement") {
                   verify(connection).prepareStatement(statementCaptor.capture())
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
               }
 
-              it("Should record populate the statement with the value of the version") {
+              it("should correctly set the first parameter to the version") {
                   verify(preparedStatement).setString(1, version)
               }
 
-              it("Should execute the statement on the database") {
+              it("should execute the query") {
                   verify(preparedStatement).executeQuery()
               }
           }
 
-          on("Checking a task exists") {
+          on("checking a task exists") {
               val expectedStatement = """SELECT * FROM change_set
                                          WHERE version = ?
                                              AND task = ?
@@ -98,20 +99,20 @@ class TestDatabaseConnector: Spek({
 
               subject.taskExists(version, taskName)
 
-              it("Should prepare the statement") {
+              it("should create a PreparedStatement") {
                   verify(connection).prepareStatement(statementCaptor.capture())
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
               }
 
-              it("Should record populate the statement with the value of the version") {
+              it("should correctly set the first parameter as the version") {
                   verify(preparedStatement).setString(1, version)
               }
 
-              it("Should record populate the statement with the value of the task name") {
+              it("should correctly set the second parameter as the task name") {
                   verify(preparedStatement).setString(2, taskName)
               }
 
-              it("Should execute the statement") {
+              it("should execute the query") {
                   verify(preparedStatement).executeQuery()
               }
           }
@@ -131,11 +132,11 @@ class TestDatabaseConnector: Spek({
 
               subject.recordTask(version, task, query)
 
-              it("Should prepare the statement") {
+              it("should create a PreparedStatement") {
                   verify(connection).prepareStatement(statementCaptor.capture())
               }
 
-              it("Should set the statement values") {
+              it("should set the correct parameters on the statement") {
                   assertEqualsIgnoreIndent(expectedStatement, statementCaptor.value)
                   verify(preparedStatement).setString(1, version)
                   verify(preparedStatement).setString(2, task)
@@ -434,7 +435,7 @@ class TestDatabaseConnector: Spek({
           }
       }
 
-      given("A a failing database connection") {
+      given("a failing database connection") {
 
           val version = "1.0.0"
           val task = "Create DB"
@@ -502,12 +503,6 @@ class TestDatabaseConnector: Spek({
                   subject.rollBack()
               }
           }
-
       }
   }
 })
-
-fun assertEqualsIgnoreIndent(expected: String, actual: String) {
-  val result = expected.replace(Regex("\\s+"), "") == actual.replace(Regex("\\s+"), "")
-  assertTrue(result, "expected $actual to be $expected")
-}

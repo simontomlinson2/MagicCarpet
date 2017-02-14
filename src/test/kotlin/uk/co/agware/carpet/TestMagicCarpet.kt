@@ -18,10 +18,14 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+// TODO Check for nested files that don't exist, i.e a ChangeSet.xml that points to a file that doesn't exist
+// TODO Test what happens when a file is supplied with incorrect contents (both .json and .xml)
+// TODO Calls the check for all the changes / tasks in a file
+// TODO Doesn't execute any existing changes - Check for when only some changes return true
 @RunWith(JUnitPlatform::class)
 class TestMagicCarpet: Spek({
 
-  describe("A MagicCarpet Object") {
+  describe("MagicCarpet") {
 
     var connector = mock<DefaultDatabaseConnector>()
     var metaData = mock<DatabaseMetaData>()
@@ -49,6 +53,7 @@ class TestMagicCarpet: Spek({
         whenever(connector.versionExists(any())).thenReturn(false)
       }
 
+      // TODO Don't need this "on" for a single test
       on("Parsing Changes") {
 
         subject.parseChanges()
@@ -72,6 +77,7 @@ class TestMagicCarpet: Spek({
           verify(connector, times(2)).versionExists(any())
         }
 
+        // TODO Better description / Maybe split this into separate tests
         it("should perform the tasks") {
           verify(connector, times(5)).executeStatement(statementCaptor.capture())
           assertEquals(5, statementCaptor.allValues.size)
@@ -84,6 +90,7 @@ class TestMagicCarpet: Spek({
           }
         }
 
+        // TODO Description means nothing, test doesn't help, what is this actually testing?
         it("should record the tasks") {
           verify(connector, times(2)).recordTask(any(), any(), any())
         }
@@ -99,6 +106,7 @@ class TestMagicCarpet: Spek({
         whenever(connector.versionExists(any())).thenReturn(false)
       }
 
+      // TODO Don't need the "on"
       on("Parsing Changes") {
 
         subject.parseChanges()
@@ -122,6 +130,7 @@ class TestMagicCarpet: Spek({
           verify(connector, times(2)).versionExists(any())
         }
 
+        // TODO See previous matching test
         it("should perform the tasks") {
           verify(connector, times(5)).executeStatement(statementCaptor.capture())
           assertEquals(5, statementCaptor.allValues.size)
@@ -134,6 +143,7 @@ class TestMagicCarpet: Spek({
           }
         }
 
+        // TODO See previous matching test
         it("should record the tasks") {
           verify(connector, times(2)).recordTask(any(), any(), any())
         }
@@ -148,6 +158,7 @@ class TestMagicCarpet: Spek({
         whenever(connector.versionExists(any())).thenReturn(false)
       }
 
+      // TODO Don't need this "on"
       on("Parsing Changes") {
 
         subject.parseChanges()
@@ -171,6 +182,7 @@ class TestMagicCarpet: Spek({
           verify(connector, times(3)).versionExists(any())
         }
 
+        // TODO See previous matching test
         it("should perform the tasks") {
           verify(connector, times(6)).executeStatement(statementCaptor.capture())
           assertEquals(6, statementCaptor.allValues.size)
@@ -184,6 +196,7 @@ class TestMagicCarpet: Spek({
           }
         }
 
+        // TODO See previous matching test
         it("should record the tasks") {
           verify(connector, times(6)).recordTask(any(), any(), any())
         }
@@ -216,6 +229,7 @@ class TestMagicCarpet: Spek({
         whenever(connector.versionExists(any())).thenReturn(false)
       }
 
+      // TODO Don't need the "on"
       on("Parsing Changes") {
 
         subject.parseChanges()
@@ -238,7 +252,7 @@ class TestMagicCarpet: Spek({
           verify(connector, never()).versionExists(any())
         }
 
-        it("should not  perform the tasks") {
+        it("should not perform the tasks") {
           verify(connector, never()).executeStatement(statementCaptor.capture())
           assertEquals(0, statementCaptor.allValues.size)
 
@@ -261,6 +275,7 @@ class TestMagicCarpet: Spek({
         whenever(connector.taskHashMatches(any(), any(), any())).thenReturn(false)
       }
 
+      // TODO Don't need the "on"
       on("Parsing Changes") {
 
         subject.parseChanges()
@@ -271,6 +286,7 @@ class TestMagicCarpet: Spek({
         }
       }
 
+      // TODO don't use "any()" unless you really have to
       on("Executing changes") {
 
         subject.run()
@@ -291,7 +307,7 @@ class TestMagicCarpet: Spek({
           verify(connector, times(2)).updateTaskHash(any(), any(), any())
         }
 
-        it("should not  perform the tasks") {
+        it("should not perform the tasks") {
             val statementCaptor = argumentCaptor<String>()
             verify(connector, never()).executeStatement(statementCaptor.capture())
             assertEquals(0, statementCaptor.allValues.size)
