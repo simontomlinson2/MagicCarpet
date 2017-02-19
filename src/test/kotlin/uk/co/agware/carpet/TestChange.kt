@@ -7,7 +7,10 @@ import org.junit.platform.runner.JUnitPlatform
 import org.junit.runner.RunWith
 import uk.co.agware.carpet.change.Change
 import uk.co.agware.carpet.exception.MagicCarpetParseException
-import kotlin.test.*
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 @RunWith(JUnitPlatform::class)
 class TestChange: SubjectSpek<Change>({
@@ -40,9 +43,5 @@ class TestChange: SubjectSpek<Change>({
             assertTrue { subject < Change("1.1.0") }
         }
 
-        // TODO Remove this test, it does literally nothing
-        it("should generate a hashcode for the change version") {
-            assertEquals(subject.hashCode(), subject.hashCode())
-        }
     }
  })

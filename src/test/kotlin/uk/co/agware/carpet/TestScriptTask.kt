@@ -1,6 +1,9 @@
 package uk.co.agware.carpet
 
 import com.nhaarman.mockito_kotlin.argumentCaptor
+import com.nhaarman.mockito_kotlin.mock
+import com.nhaarman.mockito_kotlin.times
+import com.nhaarman.mockito_kotlin.verify
 import org.jetbrains.spek.api.Spek
 import org.jetbrains.spek.api.dsl.describe
 import org.jetbrains.spek.api.dsl.given
@@ -8,59 +11,70 @@ import org.jetbrains.spek.api.dsl.it
 import org.jetbrains.spek.api.dsl.on
 import org.junit.platform.runner.JUnitPlatform
 import org.junit.runner.RunWith
-import org.mockito.Mockito
 import uk.co.agware.carpet.change.tasks.ScriptTask
 import uk.co.agware.carpet.database.DatabaseConnector
+import uk.co.agware.carpet.exception.MagicCarpetParseException
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-// TODO See FileTask <-- Still this
 @RunWith(JUnitPlatform::class)
 class TestScriptTask: Spek({
 
    describe("A ScriptTask object") {
 
-        val subject = ScriptTask("Test Task", 1, "SELECT * FROM Table; SELECT * FROM Other_Table")
+       var connection = mock<DatabaseConnector>()
 
-       given("A database connection") {
-            val connection = Mockito.mock(DatabaseConnector::class.java)
+       beforeEachTest {
+           connection = mock<DatabaseConnector>()
+       }
 
-            on("Performing the task") {
+       given("A Script Task with a default delimiter") {
 
-                subject.performTask(connection)
+           val subject = ScriptTask("Test Task", 1, "SELECT * FROM Table; SELECT * FROM Other_Table")
 
-                it("should execute each statement") {
-                    val statement =  argumentCaptor<String>()
-                    Mockito.verify<DatabaseConnector>(connection,
-                                                        Mockito.times(2)).executeStatement(statement.capture())
-                    assertEquals(2, statement.allValues.size)
-                    assertTrue(statement.allValues.contains("SELECT * FROM Table"))
-                    assertTrue(statement.allValues.contains("SELECT * FROM Other_Table"))
-                }
-            }
+           on("Performing the task") {
+
+               subject.performTask(connection)
+
+               it("should execute each statement") {
+                   val statement = argumentCaptor<String>()
+                   verify(connection,times(2)).executeStatement(statement.capture())
+                   assertEquals(2, statement.allValues.size)
+                   assertTrue(statement.allValues.contains("SELECT * FROM Table"))
+                   assertTrue(statement.allValues.contains("SELECT * FROM Other_Table"))
+               }
+           }
+       }
+
+
+       given("a script task with a custom delimiter") {
+
+           val subject = ScriptTask("Test Task", 1, "SELECT * FROM Table, SELECT * FROM Other_Table", ",")
+
+           on("Performing the task") {
+
+               subject.performTask(connection)
+
+               it("should execute each statement") {
+                   val statement = argumentCaptor<String>()
+                   verify(connection,times(2)).executeStatement(statement.capture())
+                   assertEquals(2, statement.allValues.size)
+                   assertTrue(statement.allValues.contains("SELECT * FROM Table"))
+                   assertTrue(statement.allValues.contains("SELECT * FROM Other_Table"))
+               }
+           }
+       }
+
+       given("A task with no contents") {
+
+           it("should fail with a MagicCarpetParseException") {
+               assertFailsWith<MagicCarpetParseException> {
+                   ScriptTask("Test Task", 1, "")
+               }
+           }
+
        }
    }
 
-    describe("A ScriptTask object with delimiter") {
-
-        val subject = ScriptTask("Test Task", 1, "SELECT * FROM Table, SELECT * FROM Other_Table", ",")
-
-        given("A database connection") {
-            val connection = Mockito.mock(DatabaseConnector::class.java)
-
-            on("Performing the task") {
-
-                subject.performTask(connection)
-
-                it("should execute each statement") {
-                    val statement =  argumentCaptor<String>()
-                    Mockito.verify<DatabaseConnector>(connection,
-                                                      Mockito.times(2)).executeStatement(statement.capture())
-                    assertEquals(2, statement.allValues.size)
-                    assertTrue(statement.allValues.contains("SELECT * FROM Table"))
-                    assertTrue(statement.allValues.contains("SELECT * FROM Other_Table"))
-                }
-            }
-        }
-    }
 })

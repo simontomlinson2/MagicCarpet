@@ -3,7 +3,7 @@ package uk.co.agware.carpet.change.tasks;
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
 import uk.co.agware.carpet.database.DatabaseConnector
-import uk.co.agware.carpet.exception.MagicCarpetException
+import uk.co.agware.carpet.exception.MagicCarpetParseException
 
 /**
  * Task that parses a script embedded in the change set to
@@ -24,6 +24,10 @@ class ScriptTask @JsonCreator constructor(@JsonProperty("taskName") override var
     val delimiter = if ("" == delimiter) ";" else delimiter
     val inputList = this.script.split(this.delimiter)
     override val query = this.script
+    init {
+        if(this.script.isNullOrEmpty())
+            throw MagicCarpetParseException("Empty script contents for ${this.taskName}")
+    }
 
     override fun performTask(databaseConnector: DatabaseConnector) {
         this.inputList.forEach { s -> databaseConnector.executeStatement(s.trim()) }

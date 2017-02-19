@@ -28,20 +28,26 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
     override val query = getFileContents()
 
     override fun performTask(databaseConnector: DatabaseConnector) {
-        val contents = this.query
-        val statements = contents.split(this.delimiter)
-        statements.forEach { s -> databaseConnector.executeStatement(s.trim()) }
+        val statements = this.query.split(this.delimiter)
+        statements.forEach { s ->
+            databaseConnector.executeStatement(s.trim())
+        }
     }
 
     private fun getFileContents(): String {
+        val contents: String
         //check for file path
         if(this.filePath.toLowerCase().startsWith("classpath:")){
             val path = this.filePath.replace("classpath:", "")
-            return getClasspathContents(path)
+            contents = getClasspathContents(path)
         }
         else {
-            return getPathContents(this.filePath)
+            contents = getPathContents(this.filePath)
         }
+        //Check if file is empty
+        if(contents.isNullOrEmpty())
+            throw MagicCarpetParseException("Empty file contents for ${this.filePath}")
+        return contents
     }
 
     /* Read the contents of a file on the classpath if it exists */
