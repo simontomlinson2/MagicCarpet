@@ -18,6 +18,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+// TODO Most of your "given" blocks are completely useless here still
+// TODO Still plenty of formatting inconsistencies in this file
 @RunWith(JUnitPlatform::class)
 class TestFileTask: Spek({
 

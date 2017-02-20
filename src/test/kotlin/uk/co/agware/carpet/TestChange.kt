@@ -42,6 +42,5 @@ class TestChange: SubjectSpek<Change>({
         it("should order changes using the version number") {
             assertTrue { subject < Change("1.1.0") }
         }
-
     }
  })

@@ -29,36 +29,33 @@ class FileTask @JsonCreator constructor(@JsonProperty("taskName") override var t
 
     override fun performTask(databaseConnector: DatabaseConnector) {
         val statements = this.query.split(this.delimiter)
-        statements.forEach { s ->
-            databaseConnector.executeStatement(s.trim())
-        }
+        statements.forEach { databaseConnector.executeStatement(it.trim()) }
     }
 
     private fun getFileContents(): String {
-        val contents: String
-        //check for file path
-        if(this.filePath.toLowerCase().startsWith("classpath:")){
-            val path = this.filePath.replace("classpath:", "")
-            contents = getClasspathContents(path)
+        val isClasspathFile = this.filePath.toLowerCase().startsWith("classpath:")
+
+        val contents = when(isClasspathFile) {
+            true -> getClasspathContents(this.filePath)
+            else -> getPathContents(this.filePath)
         }
-        else {
-            contents = getPathContents(this.filePath)
-        }
-        //Check if file is empty
-        if(contents.isNullOrEmpty())
+
+        if(contents.isNullOrEmpty()) {
             throw MagicCarpetParseException("Empty file contents for ${this.filePath}")
+        }
+
         return contents
     }
 
     /* Read the contents of a file on the classpath if it exists */
     private fun getClasspathContents(path: String): String {
-        val input = javaClass.classLoader.getResourceAsStream(path)
+        val relativePath = path.replace("classpath:", "")
+        val input = javaClass.classLoader.getResourceAsStream(relativePath)
+
         return when(input != null) {
             true -> IOUtils.toString(input)
             else -> throw MagicCarpetParseException("Unable to find file $path")
         }
-
-
     }
 
     /* Return the contents of a file path if it exists */

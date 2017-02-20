@@ -18,6 +18,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
+// TODO Given blocks and formatting need to be fixed
 @RunWith(JUnitPlatform::class)
 class TestScriptTask: Spek({
 

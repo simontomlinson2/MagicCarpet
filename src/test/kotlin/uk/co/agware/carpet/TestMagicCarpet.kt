@@ -19,6 +19,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+// TODO Formatting needs to be fixed still
 @RunWith(JUnitPlatform::class)
 class TestMagicCarpet: Spek({
 
@@ -333,6 +334,7 @@ class TestMagicCarpet: Spek({
           verify(connector).taskExists("1.0.1", "Alter table")
         }
 
+        // TODO Fix this, it looks like its going to be incredible fragile and difficult to update if needed
         it("should update the task hash"){
           verify(connector).updateTaskHash("1.0.0", "Create Tables",
                                            "create table test(version integer, test date);" +
@@ -357,6 +359,7 @@ class TestMagicCarpet: Spek({
 
     given("A base json file path with some changes that have already been run") {
 
+      // TODO Fix this, it looks like its going to be incredible fragile and difficult to update if needed
       val path = Paths.get("src/test/files/partially_completed/ChangeSet.json")
       val createTablesStatement = "create table test(version integer, test date);" +
               " alter table test add column another varchar(64);" +

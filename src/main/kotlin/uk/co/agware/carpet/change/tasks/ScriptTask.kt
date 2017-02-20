@@ -24,13 +24,14 @@ class ScriptTask @JsonCreator constructor(@JsonProperty("taskName") override var
     val delimiter = if ("" == delimiter) ";" else delimiter
     val inputList = this.script.split(this.delimiter)
     override val query = this.script
+
     init {
-        if(this.script.isNullOrEmpty())
+        if(this.script.isNullOrEmpty()) {
             throw MagicCarpetParseException("Empty script contents for ${this.taskName}")
+        }
     }
 
     override fun performTask(databaseConnector: DatabaseConnector) {
-        this.inputList.forEach { s -> databaseConnector.executeStatement(s.trim()) }
+        this.inputList.forEach { databaseConnector.executeStatement(it.trim()) }
     }
-
 }
