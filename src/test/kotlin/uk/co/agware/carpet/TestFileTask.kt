@@ -18,8 +18,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-// TODO Most of your "given" blocks are completely useless here still
-// TODO Still plenty of formatting inconsistencies in this file
 @RunWith(JUnitPlatform::class)
 class TestFileTask: Spek({
 
@@ -32,7 +30,6 @@ class TestFileTask: Spek({
     }
 
     given("A file on the classpath") {
-
       val task = FileTask("Test Task", 1, "classpath:classpathTest.sql", ",")
 
       on("performing the task") {
@@ -43,7 +40,6 @@ class TestFileTask: Spek({
           val statements = argumentCaptor<String>()
           verify(connection, times(2))
                  .executeStatement(statements.capture())
-
           assertEquals(2, statements.allValues.size)
           assertTrue(statements.allValues.contains("SELECT * FROM Classpath"))
           assertTrue(statements.allValues.contains("SELECT * FROM class_path"))
@@ -52,17 +48,7 @@ class TestFileTask: Spek({
 
     }
 
-    given("A file that does not exist on the classpath") {
-
-      it("should fail with a MagicCarpetParseException") {
-        assertFailsWith<MagicCarpetParseException> {
-          FileTask("A Failing Task", 2, "classpath:this.does.not.exist")
-        }
-      }
-    }
-
     given("A file system file") {
-
       val subject = FileTask("Test Task", 1, "src/test/files/test.sql")
 
       on("performing the task") {
@@ -73,7 +59,6 @@ class TestFileTask: Spek({
           val statements = argumentCaptor<String>()
           verify(connection, times(2))
                  .executeStatement(statements.capture())
-
           assertEquals(2, statements.allValues.size)
           assertTrue(statements.allValues.contains("SELECT * FROM Table"))
           assertTrue(statements.allValues.contains("SELECT * FROM Other_Table"))
@@ -81,23 +66,22 @@ class TestFileTask: Spek({
       }
     }
 
-    given("A file that does not exist on the file system") {
-
-      it("should fail with a MagicCarpetParseException") {
-        assertFailsWith<MagicCarpetParseException> {
-          FileTask("A Failing Task", 2, "this/does/not/exist")
-        }
+    it("should fail with a MagicCarpetParseException") {
+      assertFailsWith<MagicCarpetParseException> {
+        FileTask("A Failing Task", 2, "this/does/not/exist")
       }
     }
 
-    given("A file with no contents") {
-
-      it("should fail with a MagicCarpetParseException") {
-        assertFailsWith<MagicCarpetParseException> {
-          FileTask("Test Task", 1, "src/test/files/empty.sql")
-        }
+    it("should fail with a MagicCarpetParseException") {
+      assertFailsWith<MagicCarpetParseException> {
+        FileTask("Test Task", 1, "src/test/files/empty.sql")
       }
+    }
 
+    it("should fail with a MagicCarpetParseException") {
+      assertFailsWith<MagicCarpetParseException> {
+        FileTask("A Failing Task", 2, "classpath:this.does.not.exist")
+      }
     }
   }
 })

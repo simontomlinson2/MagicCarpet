@@ -18,7 +18,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-// TODO Given blocks and formatting need to be fixed
 @RunWith(JUnitPlatform::class)
 class TestScriptTask: Spek({
 
@@ -31,7 +30,6 @@ class TestScriptTask: Spek({
        }
 
        given("A Script Task with a default delimiter") {
-
            val subject = ScriptTask("Test Task", 1, "SELECT * FROM Table; SELECT * FROM Other_Table")
 
            on("Performing the task") {
@@ -48,9 +46,7 @@ class TestScriptTask: Spek({
            }
        }
 
-
        given("a script task with a custom delimiter") {
-
            val subject = ScriptTask("Test Task", 1, "SELECT * FROM Table, SELECT * FROM Other_Table", ",")
 
            on("Performing the task") {
@@ -67,14 +63,10 @@ class TestScriptTask: Spek({
            }
        }
 
-       given("A task with no contents") {
-
-           it("should fail with a MagicCarpetParseException") {
-               assertFailsWith<MagicCarpetParseException> {
-                   ScriptTask("Test Task", 1, "")
-               }
+       it("should fail with a MagicCarpetParseException") {
+           assertFailsWith<MagicCarpetParseException> {
+               ScriptTask("Test Task", 1, "")
            }
-
        }
    }
 

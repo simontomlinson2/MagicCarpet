@@ -8,6 +8,8 @@ import org.jetbrains.spek.api.dsl.it
 import org.jetbrains.spek.api.dsl.on
 import org.junit.platform.runner.JUnitPlatform
 import org.junit.runner.RunWith
+import uk.co.agware.carpet.change.tasks.FileTask
+import uk.co.agware.carpet.change.tasks.ScriptTask
 import uk.co.agware.carpet.database.DefaultDatabaseConnector
 import uk.co.agware.carpet.exception.MagicCarpetParseException
 import uk.co.agware.carpet.stubs.ResultsSetStub
@@ -19,7 +21,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-// TODO Formatting needs to be fixed still
+
 @RunWith(JUnitPlatform::class)
 class TestMagicCarpet: Spek({
 
@@ -34,12 +36,9 @@ class TestMagicCarpet: Spek({
       connector = mock<DefaultDatabaseConnector>()
       metaData = mock<DatabaseMetaData>()
       preparedStatement = mock<PreparedStatement>()
-
       whenever(preparedStatement.execute()).thenReturn(true)
-      whenever(metaData.getTables(null, null, "change_set", null))
-              .thenReturn(ResultsSetStub(true))
-      whenever(metaData.getColumns(null, null, "change_set", "hash"))
-              .thenReturn(ResultsSetStub(true))
+      whenever(metaData.getTables(null, null, "change_set", null)).thenReturn(ResultsSetStub(true))
+      whenever(metaData.getColumns(null, null, "change_set", "hash")).thenReturn(ResultsSetStub(true))
     }
 
     given("A base xml file path") {
@@ -52,9 +51,7 @@ class TestMagicCarpet: Spek({
       }
 
       it("Should read the xml changes") {
-
         subject.parseChanges()
-
         assertEquals(2, subject.changes.size)
         assertEquals(1, subject.changes[0].tasks.size)
       }
@@ -95,7 +92,6 @@ class TestMagicCarpet: Spek({
     }
 
     given("A base json file path") {
-
       val path = Paths.get("src/test/files/ChangeSet.json")
 
       beforeEachTest {
@@ -110,8 +106,8 @@ class TestMagicCarpet: Spek({
       }
 
       on("Executing changes") {
-
         val statementCaptor = argumentCaptor<String>()
+
         subject.run()
 
         it("should check the change set table exists") {
@@ -193,7 +189,6 @@ class TestMagicCarpet: Spek({
     }
 
     given("A File that doesn't exist") {
-
       val path = Paths.get("this/does/not/exist")
 
       beforeEachTest {
@@ -205,12 +200,10 @@ class TestMagicCarpet: Spek({
         assertFailsWith<MagicCarpetParseException>{
           subject.parseChanges()
         }
-
       }
     }
 
     given("A nested changeSet that uses a file that doesn't exist") {
-
       val path = Paths.get("src/test/files/nofile_changeset")
 
       beforeEachTest {
@@ -227,7 +220,6 @@ class TestMagicCarpet: Spek({
     }
 
     given("An invalid changeSet.xml") {
-
       val path = Paths.get("src/test/files/invalid_xml")
 
       beforeEachTest {
@@ -239,12 +231,10 @@ class TestMagicCarpet: Spek({
         assertFailsWith<MagicCarpetParseException>{
           subject.parseChanges()
         }
-
       }
     }
 
     given("An invalid changeSet.json") {
-
       val path = Paths.get("src/test/files/invalid_json")
 
       beforeEachTest {
@@ -256,12 +246,10 @@ class TestMagicCarpet: Spek({
         assertFailsWith<MagicCarpetParseException>{
           subject.parseChanges()
         }
-
       }
     }
 
     given("A base json file path and developer mode on") {
-
       val path = Paths.get("src/test/files/ChangeSet.json")
 
       beforeEachTest {
@@ -300,7 +288,6 @@ class TestMagicCarpet: Spek({
     }
 
     given("A base json file path with changes that have already been run") {
-
       val path = Paths.get("src/test/files/ChangeSet.json")
 
       beforeEachTest {
@@ -334,14 +321,28 @@ class TestMagicCarpet: Spek({
           verify(connector).taskExists("1.0.1", "Alter table")
         }
 
-        // TODO Fix this, it looks like its going to be incredible fragile and difficult to update if needed
         it("should update the task hash"){
-          verify(connector).updateTaskHash("1.0.0", "Create Tables",
-                                           "create table test(version integer, test date);" +
-                                           " alter table test add column another varchar(64);" +
-                                           " create table second(version varchar(64))")
-          verify(connector).updateTaskHash("1.0.1", "Alter table",
-                                           "SELECT * FROM Table;\r\nSELECT * FROM Other_Table")
+
+         val firstCaptor = argumentCaptor<String>()
+         val secondCaptor = argumentCaptor<String>()
+         val thirdCaptor = argumentCaptor<String>()
+         verify(connector, times(2)).updateTaskHash(firstCaptor.capture(), secondCaptor.capture(), thirdCaptor.capture())
+          assertTrue {
+            firstCaptor.allValues.contains("1.0.0")
+            firstCaptor.allValues.contains("1.0.1")
+
+          }
+          assertTrue {
+            secondCaptor.allValues.contains("Create Tables")
+            secondCaptor.allValues.contains("Alter table")
+
+          }
+          assertTrue {
+            thirdCaptor.allValues.contains("create table test(version integer, test date);" +
+                                                   " alter table test add column another varchar(64);" +
+                                                   " create table second(version varchar(64))")
+            thirdCaptor.allValues.contains("SELECT * FROM Table;\r\nSELECT * FROM Other_Table")
+          }
         }
 
         it("should not perform the tasks") {
@@ -359,23 +360,18 @@ class TestMagicCarpet: Spek({
 
     given("A base json file path with some changes that have already been run") {
 
-      // TODO Fix this, it looks like its going to be incredible fragile and difficult to update if needed
       val path = Paths.get("src/test/files/partially_completed/ChangeSet.json")
-      val createTablesStatement = "create table test(version integer, test date);" +
-              " alter table test add column another varchar(64);" +
-              " create table second(version varchar(64))"
-      val createTables2Statement = "create table test2(version integer, test date);" +
-              " alter table test2 add column another varchar(64);" +
-              " create table second2(version varchar(64))"
-      val alterTableStatement = "SELECT * FROM Table;\r\nSELECT * FROM Other_Table"
+      val task1 = ScriptTask("Create Tables", 1, "create table test(version integer, test date);")
+      val task2 = ScriptTask("Create Tables 2", 2, "create table test2(version integer, test date);")
+      val task3 = FileTask("Alter table", 1, "src\\test\\files\\test.sql")
 
       beforeEachTest {
         subject = MagicCarpet(connector, basePath = path)
         whenever(connector.versionExists("1.0.0")).thenReturn(true)
         whenever(connector.versionExists("1.0.1")).thenReturn(false)
-        whenever(connector.taskExists("1.0.0", "Create Tables")).thenReturn(true)
-        whenever(connector.taskExists("1.0.0", "Create Tables 2")).thenReturn(false)
-        whenever(connector.taskExists("1.0.1", "Alter table")).thenReturn(false)
+        whenever(connector.taskExists("1.0.0", task1.taskName)).thenReturn(true)
+        whenever(connector.taskExists("1.0.0", task2.taskName)).thenReturn(false)
+        whenever(connector.taskExists("1.0.1", task3.taskName)).thenReturn(false)
         whenever(connector.taskHashMatches(any(), any(), any())).thenReturn(false)
       }
 
@@ -402,46 +398,42 @@ class TestMagicCarpet: Spek({
         }
 
         it("should check the task exists"){
-          verify(connector).taskExists("1.0.0", "Create Tables")
-          verify(connector).taskExists("1.0.0", "Create Tables 2")
-          assertTrue(connector.taskExists("1.0.0", "Create Tables"))
-          assertFalse(connector.taskExists("1.0.0", "Create Tables 2"))
+          verify(connector).taskExists("1.0.0", task1.taskName)
+          verify(connector).taskExists("1.0.0", task2.taskName)
+          assertTrue(connector.taskExists("1.0.0", task1.taskName))
+          assertFalse(connector.taskExists("1.0.0", task2.taskName))
         }
 
         it("should not check if a task exists when the change doesnt exist"){
-          verify(connector, never()).taskExists("1.0.1", "Alter table")
+          verify(connector, never()).taskExists("1.0.1", task3.taskName)
         }
 
         it("should update the task hash if the task exists"){
-          verify(connector).updateTaskHash("1.0.0", "Create Tables", createTablesStatement)
+          verify(connector).updateTaskHash("1.0.0", task1.taskName, task1.query)
         }
 
         it("should not update the task hash if the task doesnt exist"){
-          verify(connector, never()).updateTaskHash("1.0.0", "Create Tables 2", createTables2Statement)
-          verify(connector, never()).updateTaskHash("1.0.1", "Alter table", alterTableStatement)
+          verify(connector, never()).updateTaskHash("1.0.0", task2.taskName, task2.query)
+          verify(connector, never()).updateTaskHash("1.0.1", task3.taskName, task3.query)
         }
 
         it("should not execute an existing task") {
           verify(connector, never()).executeStatement("create table test(version integer, test date)")
-          verify(connector, never()).executeStatement("alter table test add column another varchar(64)")
-          verify(connector, never()).executeStatement("create table second(version varchar(64))")
         }
 
         it("should execute any new task") {
           verify(connector).executeStatement("create table test2(version integer, test date)")
-          verify(connector).executeStatement("alter table test2 add column another varchar(64)")
-          verify(connector).executeStatement("create table second2(version varchar(64))")
           verify(connector).executeStatement("SELECT * FROM Table")
           verify(connector).executeStatement("SELECT * FROM Other_Table")
         }
 
         it("should record the tasks if they have not been recorded before") {
-          verify(connector).recordTask("1.0.0", "Create Tables 2", createTables2Statement)
-          verify(connector).recordTask("1.0.1", "Alter table", alterTableStatement)
+          verify(connector).recordTask("1.0.0", task2.taskName, task2.query)
+          verify(connector).recordTask("1.0.1", task3.taskName, task3.query)
         }
 
         it("should not record the tasks if they have been recorded before") {
-          verify(connector, never()).recordTask("1.0.0", "Create Tables", createTablesStatement)
+          verify(connector, never()).recordTask("1.0.0", task1.taskName, task1.query)
         }
 
       }
