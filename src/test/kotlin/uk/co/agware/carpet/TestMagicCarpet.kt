@@ -56,7 +56,6 @@ class TestMagicCarpet: Spek({
         assertEquals(1, subject.changes[0].tasks.size)
       }
 
-
       on("Executing changes") {
 
         val statementCaptor = argumentCaptor<String>()
